@@ -1,0 +1,37 @@
+{
+  "name": "live-lecture-app",
+  "version": "1.0.0",
+  "description": "Desktop application with React frontend and Node.js backend",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:frontend": "cd frontend && npm run start",
+    "start:backend": "cd backend && npm run start",
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "react",
+    "nodejs",
+    "typescript",
+    "websocket",
+    "graphql",
+    "firebase",
+    "google-ai",
+    "desktop-app"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
