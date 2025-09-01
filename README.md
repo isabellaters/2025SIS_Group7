@@ -26,12 +26,19 @@ A modern desktop application built with React frontend and Node.js backend, feat
 - **AWS/GCP/Azure** - Cloud hosting and managed services
 - **WebVTT/SRT** - Subtitle format support
 
+### Desktop Application
+- **Electron** - Cross-platform desktop app framework
+- **electron-builder** - Application packaging and distribution
+- **Native Menus** - Platform-specific application menus
+- **Secure IPC** - Inter-process communication with context isolation
+
 ## Project Structure
 
 ```
 LiveLecture/
 ├── frontend/          # React application
 ├── backend/           # Node.js API server
+├── electron/          # Electron desktop app configuration
 ├── shared/            # Shared types and utilities
 ├── docs/              # Documentation
 └── deployment/        # Deployment configurations
@@ -87,6 +94,23 @@ npm run build        # Build TypeScript
 npm run start        # Start production server
 ```
 
+### Desktop Application Development
+```bash
+# Start all services including Electron
+npm run dev
+
+# Build for production
+npm run build
+
+# Create distributable packages
+npm run dist         # All platforms
+npm run dist:win     # Windows only
+npm run dist:mac     # macOS only
+npm run dist:linux   # Linux only
+```
+
+For detailed Electron setup and usage, see [electron/README.md](electron/README.md).
+
 ## Features
 
 - **Real-time Communication** - WebSocket-based live updates
@@ -96,6 +120,8 @@ npm run start        # Start production server
 - **Firebase Integration** - Authentication and real-time database
 - **TypeScript** - Full type safety across the stack
 - **Modern UI** - Responsive design with Tailwind CSS
+- **Desktop Application** - Cross-platform Electron app with native menus
+- **Secure Architecture** - Context isolation and secure IPC communication
 
 ## Deployment
 
