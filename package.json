@@ -1,76 +1,44 @@
 {
-  "name": "live-lecture-app",
+  "name": "Live Lecture Application",
   "version": "1.0.0",
-  "description": "Desktop application with React frontend and Node.js backend",
+  "main": "dist-electron/main/index.js",
+  "description": "Live lecture transcription and post lecture analysis.",
+  "license": "MIT",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
-  "main": "electron/main.js",
+  "debug": {
+    "env": {
+      "VITE_DEV_SERVER_URL": "http://127.0.0.1:7777/"
+    }
+  },
+  "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run electron:dev\"",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && npm run dev",
-    "electron:dev": "wait-on http://localhost:5173 && electron .",
-    "build": "npm run build:backend && npm run build:frontend && npm run build:electron",
-    "build:frontend": "cd frontend && npm run build",
-    "build:backend": "cd backend && npm run build",
-    "build:electron": "electron-builder",
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
-    "start:frontend": "cd frontend && npm run start",
-    "start:backend": "cd backend && npm run start",
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-    "dist": "npm run build && electron-builder --publish=never",
-    "dist:win": "npm run build && electron-builder --win --publish=never",
-    "dist:mac": "npm run build && electron-builder --mac --publish=never",
-    "dist:linux": "npm run build && electron-builder --linux --publish=never"
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder",
+    "preview": "vite preview",
+    "pretest": "vite build --mode=test",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9",
+    "firebase": "^12.2.1"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
-    "wait-on": "^7.2.0"
-  },
-  "keywords": [
-    "react",
-    "nodejs",
-    "typescript",
-    "websocket",
-    "graphql",
-    "firebase",
-    "google-ai",
-    "desktop-app",
-    "electron"
-  ],
-  "author": "Your Name",
-  "license": "MIT",
-  "build": {
-    "appId": "com.livelecture.app",
-    "productName": "Live Lecture App",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "electron/**/*",
-      "frontend/dist/**/*",
-      "backend/dist/**/*",
-      "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "backend/dist",
-        "to": "backend"
-      }
-    ],
-    "mac": {
-      "category": "public.app-category.education"
-    },
-    "win": {
-      "target": "nsis"
-    },
-    "linux": {
-      "target": "AppImage"
-    }
+    "@playwright/test": "^1.48.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.2.0",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.49",
+    "postcss-import": "^16.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.4.2",
+    "vite": "^5.4.11",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^2.1.5"
   }
 }
