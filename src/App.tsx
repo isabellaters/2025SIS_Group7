@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import React, { useEffect, useMemo, useState } from "react";
+=======
+<<<<<<< HEAD
+import { useState } from "react";
+>>>>>>> 6ef5aac (Add glossary highlighting feature with mock transcript and glossary list)
 
 /**
  * LiveLecture – New Meeting + Live Session (Electron-friendly, hash routing)
@@ -197,6 +202,7 @@ export function NewMeetingPage({ onStart }: { onStart?: () => void }) {
   );
 }
 
+<<<<<<< HEAD
 // ---------------- Live Session ----------------
 export function LiveSessionPage({ controller }: { controller?: TranscriptController }) {
   const [isDocked, setIsDocked] = useState<boolean>(true);
@@ -421,3 +427,18 @@ export function __runLiveLectureInlineTests(): { passed: number; total: number; 
   const passed = results.filter(r => r.ok).length;
   return { passed, total: results.length, results };
 }
+=======
+export default App;
+=======
+function App() {
+  return (
+    <div>
+      <h1>Hello Haley 🚀</h1>
+      <p>This is coming from App.tsx 🎉</p>
+    </div>
+  )
+}
+
+export default App
+>>>>>>> 2166452 (Add glossary highlighting feature with mock transcript and glossary list)
+>>>>>>> 6ef5aac (Add glossary highlighting feature with mock transcript and glossary list)
