@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState } from "react";
 
 // Mock glossary (come from backend API later)
@@ -56,3 +57,15 @@ function App() {
 }
 
 export default App;
+=======
+function App() {
+  return (
+    <div>
+      <h1>Hello Haley 🚀</h1>
+      <p>This is coming from App.tsx 🎉</p>
+    </div>
+  )
+}
+
+export default App
+>>>>>>> 2166452 (Add glossary highlighting feature with mock transcript and glossary list)
