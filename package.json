@@ -1,5 +1,5 @@
 {
-  "name": "Live Lecture Application",
+  "name": "live-lecture-application",
   "version": "1.0.0",
   "main": "dist-electron/main/index.js",
   "description": "Live lecture transcription and post lecture analysis.",
@@ -19,8 +19,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@google-cloud/speech": "^7.2.0",
+    "@google/generative-ai": "^0.24.1",
     "electron-updater": "^6.3.9",
-    "firebase": "^12.2.1"
+    "firebase": "^12.2.1",
+    "recorder-js": "^1.0.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",

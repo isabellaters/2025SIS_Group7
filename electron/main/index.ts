@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, desktopCapturer, screen } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -119,5 +119,46 @@ ipcMain.handle('open-win', (_, arg) => {
     childWindow.loadURL(`${VITE_DEV_SERVER_URL}#${arg}`)
   } else {
     childWindow.loadFile(indexHtml, { hash: arg })
+  }
+})
+
+// Desktop capture IPC handlers
+ipcMain.handle('get-desktop-sources', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window'],
+      thumbnailSize: { width: 150, height: 150 }
+    })
+    return sources.map(source => ({
+      id: source.id,
+      name: source.name,
+      thumbnail: source.thumbnail.toDataURL()
+    }))
+  } catch (error) {
+    console.error('Error getting desktop sources:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('start-desktop-capture', async (_, sourceId) => {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window'],
+      thumbnailSize: { width: 150, height: 150 }
+    })
+    
+    const source = sources.find(s => s.id === sourceId)
+    if (!source) {
+      throw new Error('Source not found')
+    }
+
+    return {
+      id: source.id,
+      name: source.name,
+      stream: source.id // This will be used to create MediaStream in renderer
+    }
+  } catch (error) {
+    console.error('Error starting desktop capture:', error)
+    throw error
   }
 })

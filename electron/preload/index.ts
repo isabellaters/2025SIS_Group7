@@ -19,8 +19,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return ipcRenderer.invoke(channel, ...omit)
   },
 
-  // You can expose other APTs you need here.
-  // ...
+  // Desktop capture APIs
+  getDesktopSources: () => ipcRenderer.invoke('get-desktop-sources'),
+  startDesktopCapture: (sourceId: string) => ipcRenderer.invoke('start-desktop-capture', sourceId),
 })
 
 // --------- Preload scripts loading ---------
