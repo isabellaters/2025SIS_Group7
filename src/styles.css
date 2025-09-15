@@ -1,0 +1,9 @@
+/* src/styles.css */
+@import "tailwindcss";
+
+/* optional base tweaks */
+@layer base {
+  html, body, #root { height: 100%; }
+}
+
+html, body { background: transparent; }
