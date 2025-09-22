@@ -1,35 +1,73 @@
-// electron/main/main.js
+// 1) IMPORTS FIRST — do not reference `app` before this line
+const { app, BrowserWindow, screen } = require("electron");
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, screen } = require("electron");
 
 let win = null;
-const isDev = !app.isPackaged;
+const isDev = !app.isPackaged; // 2) Now it's safe to use `app`
 
-/** Create the single app window */
-function createWindow() {
-  if (win && !win.isDestroyed()) return;
+// Keep width consistent with your UI
+const WIDTH = 1100;
+const MARGIN_BOTTOM = 0;
 
-  // Size & position so it can sit near the bottom of the screen (under Teams)
+// Bottom-center position
+function positionFor(height) {
   const { workArea } = screen.getPrimaryDisplay();
-  const WIDTH = Math.min(1100, workArea.width - 24);
-  const HEIGHT = 260;
-  const X = Math.round(workArea.x + (workArea.width - WIDTH) / 2);
-  const Y = Math.round(workArea.y + workArea.height - HEIGHT - 24);
+  const x = Math.round(workArea.x + (workArea.width - WIDTH) / 2);
+  const y = Math.round(workArea.y + workArea.height - height - 24);
+  return { x, y };
+}
 
-  // Optional preload (only if the file exists)
+// Ask the renderer for the exact card height and fit window to it
+async function fitToContent() {
+  if (!win) return;
+  try {
+    const js = `
+      (() => {
+        const card = document.getElementById('ll-container');
+        if (card) {
+          const rect = card.getBoundingClientRect();
+          return Math.ceil(rect.height);
+        }
+        const root = document.getElementById('root');
+        const child = root && root.firstElementChild;
+        if (child) {
+          const rect = child.getBoundingClientRect();
+          return Math.ceil(rect.height);
+        }
+        return Math.ceil(document.documentElement.scrollHeight || document.body.scrollHeight || 360);
+      })()
+    `;
+    const cardH = await win.webContents.executeJavaScript(js, true);
+    const { workArea } = screen.getPrimaryDisplay();
+    const maxH = workArea.height - 24;
+    const height = Math.min(Math.max(240, cardH + MARGIN_BOTTOM), maxH);
+    const { x, y } = positionFor(height);
+
+    win.setContentSize(WIDTH, height); // use content size (excludes titlebar)
+    win.setPosition(x, y);
+  } catch {
+    // ignore during navigation/teardown
+  }
+}
+
+// Simple debounce
+function debounce(fn, ms) {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+function createWindow() {
   const preloadPath = path.resolve(__dirname, "preload.js");
   const hasPreload = fs.existsSync(preloadPath);
 
   win = new BrowserWindow({
     width: WIDTH,
-    height: HEIGHT,
-    x: X,
-    y: Y,
-    show: false,             // show after first paint
-    frame: true,             // keep the native titlebar (no duplicate custom bar)
+    height: 360,               // temp; will be fitted after load
+    show: false,               // avoid flicker; show after first paint
+    frame: true,               // keep native titlebar
     titleBarStyle: "default",
     backgroundColor: "#ffffff",
+    useContentSize: true,      // IMPORTANT: sizes refer to web contents
     resizable: true,
     fullscreenable: false,
     webPreferences: {
@@ -40,23 +78,29 @@ function createWindow() {
     },
   });
 
-  win.once("ready-to-show", () => win.show());
+  win.once("ready-to-show", () => {
+    win.show();
+    setTimeout(fitToContent, 80);
+    setTimeout(fitToContent, 200); // second pass after fonts/layout settle
+  });
+
   win.on("closed", () => { win = null; });
 
   if (isDev) {
-    // Vite dev server (hash router)
     win.loadURL("http://localhost:5173/#/");
-    // Uncomment if you want to inspect:
     // win.webContents.openDevTools({ mode: "detach" });
   } else {
-    // Load the built renderer (hash router still works on file://)
     const indexHtml = path.resolve(__dirname, "../../dist/index.html");
-    // `hash: '/'` ensures we land on your app's root
     win.loadFile(indexHtml, { hash: "/" });
   }
+
+  const refit = debounce(fitToContent, 80);
+  win.webContents.on("did-finish-load", refit);
+  win.webContents.on("did-navigate-in-page", refit);
+  win.webContents.on("dom-ready", refit);
 }
 
-/** Keep a single instance only */
+// Single instance guard — safe to call now that `app` exists
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -75,7 +119,6 @@ if (!gotLock) {
   });
 
   app.on("window-all-closed", () => {
-    // Quit on all platforms except macOS (standard behavior)
     if (process.platform !== "darwin") app.quit();
   });
 }
