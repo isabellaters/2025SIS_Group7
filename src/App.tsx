@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import SpeechToTextInterface from "./components/SpeechToTextInterface";
+import ConsoleSpeechTest from "./components/ConsoleSpeechTest";
 
 /**
  * LiveLecture – New Meeting + Live Session (Electron-friendly, hash routing)
@@ -175,23 +177,41 @@ export function NewMeetingPage({ onStart }: { onStart?: () => void }) {
       </div>
 
       {/* Start */}
-      <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={() => setIsDocked((v) => !v)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-xs hover:bg-neutral-50"
-        >
-          {isDocked ? "Undock" : "Dock"}
-        </button>
-        <button
-          onClick={() => {
-            lsSet("ll:newMeeting", JSON.stringify({ lectureTitle, subjects, subject, isDocked }));
-            if (typeof onStart === "function") { onStart(); return; }
-            if (hasWindow) { window.location.hash = "#/live"; }
-          }}
-          className="rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
-        >
-          Start
-        </button>
+      <div className="mt-4 flex justify-between">
+            <button
+              onClick={() => {
+                if (hasWindow) { window.location.hash = "#/speech"; }
+              }}
+              className="rounded-md border border-neutral-300 px-3 py-2 text-xs hover:bg-neutral-50"
+            >
+              🎤 Speech-to-Text Demo
+            </button>
+            <button
+              onClick={() => {
+                if (hasWindow) { window.location.hash = "#/console-test"; }
+              }}
+              className="rounded-md border border-neutral-300 px-3 py-2 text-xs hover:bg-neutral-50"
+            >
+              🧪 Console Test
+            </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsDocked((v) => !v)}
+            className="rounded-md border border-neutral-300 px-3 py-2 text-xs hover:bg-neutral-50"
+          >
+            {isDocked ? "Undock" : "Dock"}
+          </button>
+          <button
+            onClick={() => {
+              lsSet("ll:newMeeting", JSON.stringify({ lectureTitle, subjects, subject, isDocked }));
+              if (typeof onStart === "function") { onStart(); return; }
+              if (hasWindow) { window.location.hash = "#/live"; }
+            }}
+            className="rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
+          >
+            Start
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -203,6 +223,7 @@ export function LiveSessionPage({ controller }: { controller?: TranscriptControl
   const [activeTab, setActiveTab] = useState<"Transcription" | "Translation">("Transcription");
   const [title, setTitle] = useState<string>("Untitled Session");
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [showSpeechControls, setShowSpeechControls] = useState<boolean>(false);
 
   // Maintain 1:1 arrays and a TEXT cursor for seek-only behavior
   const [transcriptLines, setTranscriptLines] = useState<string[]>([]);
@@ -246,6 +267,22 @@ export function LiveSessionPage({ controller }: { controller?: TranscriptControl
     });
     return () => { if (off) off(); };
   }, [controller]);
+
+  // subscribe to speech-to-text updates
+  useEffect(() => {
+    if (!hasWindow) return;
+    const handleSpeechTranscription = (event: CustomEvent) => {
+      const { text } = event.detail;
+      setTranscriptLines((prevT) => {
+        const nextT = [...prevT, text];
+        setTranslationLines((prevR) => padToSameLength(nextT, prevR)[1]);
+        return nextT;
+      });
+    };
+    
+    window.addEventListener('speechTranscription', handleSpeechTranscription as EventListener);
+    return () => window.removeEventListener('speechTranscription', handleSpeechTranscription as EventListener);
+  }, []);
 
   // Auto-advance cursor to end when playing and new lines arrive
   const totalLines = Math.max(transcriptLines.length, translationLines.length);
@@ -292,7 +329,15 @@ export function LiveSessionPage({ controller }: { controller?: TranscriptControl
     <div className={containerClasses}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 cursor-default">
-        <div className="flex items-center gap-1.5" />
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowSpeechControls((v) => !v)}
+            className="rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50"
+            title="Toggle Speech-to-Text Controls"
+          >
+            🎤 {showSpeechControls ? "Hide" : "Show"} Audio
+          </button>
+        </div>
         <div className="flex-1 text-center text-sm font-medium text-neutral-700 truncate px-2" title={title}>
           {title}
         </div>
@@ -306,6 +351,13 @@ export function LiveSessionPage({ controller }: { controller?: TranscriptControl
           </button>
         </div>
       </div>
+
+      {/* Speech-to-Text Controls */}
+      {showSpeechControls && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <SpeechToTextInterface />
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mt-3 flex items-center gap-2">
@@ -356,10 +408,32 @@ export function LiveSessionPage({ controller }: { controller?: TranscriptControl
   );
 }
 
+// ---------------- Speech-to-Text Page ----------------
+export function SpeechToTextPage() {
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Speech-to-Text Demo</h1>
+      <SpeechToTextInterface />
+    </div>
+  );
+}
+
+// ---------------- Console Test Page ----------------
+export function ConsoleTestPage() {
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Console Speech-to-Text Test</h1>
+      <ConsoleSpeechTest />
+    </div>
+  );
+}
+
 // ---------------- Default export for preview/build (hash router) ----------------
 export default function App() {
   const [route, navigate] = useHashRouter();
   if (route === "/live") return <LiveSessionPage />;
+  if (route === "/speech") return <SpeechToTextPage />;
+  if (route === "/console-test") return <ConsoleTestPage />;
   return <NewMeetingPage onStart={() => navigate("/live")} />;
 }
 
