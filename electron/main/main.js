@@ -12,10 +12,13 @@ function createWindow() {
 
   // Size & position so it can sit near the bottom of the screen (under Teams)
   const { workArea } = screen.getPrimaryDisplay();
-  const WIDTH = Math.min(1100, workArea.width - 24);
-  const HEIGHT = 260;
+const WIDTH = 1400; // Wider, but not full screen
+const HEIGHT = 800; // Slightly taller
+
+
   const X = Math.round(workArea.x + (workArea.width - WIDTH) / 2);
-  const Y = Math.round(workArea.y + workArea.height - HEIGHT - 24);
+  const Y = Math.round(workArea.y + (workArea.height - HEIGHT) / 2); // Center vertically
+
 
   // Optional preload (only if the file exists)
   const preloadPath = path.resolve(__dirname, "preload.js");
@@ -24,6 +27,8 @@ function createWindow() {
   win = new BrowserWindow({
     width: WIDTH,
     height: HEIGHT,
+    minWidth: 900,
+    minHeight: 600,
     x: X,
     y: Y,
     show: false,             // show after first paint

@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Sidebar from './Sidebar';
+import DashboardMain from './DashboardMain';
 
 /**
  * LiveLecture – New Meeting + Live Session (Electron-friendly, hash routing)
@@ -132,69 +134,28 @@ export function NewMeetingPage({ onStart }: { onStart?: () => void }) {
       ? "fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[min(1100px,90vw)] rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
       : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-white p-6";
 
-  return (
-    <div className={containerClasses}>
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 cursor-default">
-        <div className="flex items-center gap-1.5" />
-        <div className="text-sm text-neutral-600 select-none">LiveLecture – New Meeting</div>
-        <div className="flex items-center gap-2">
-          {justSaved ? (
-            <span className="text-xs text-emerald-600">Saved</span>
-          ) : (
-            <span className="text-xs text-neutral-400">Auto‑saving…</span>
-          )}
-        </div>
+  // Example: replace your main div in App.tsx
+return (
+  <div style={{ display: 'flex', height: '100vh' }}>
+    {/* Sidebar */}
+    <aside style={{ width: '220px', background: '#f4f4f4', padding: '16px' }}>
+      <h2>Sidebar</h2>
+      <ul>
+        <li>Notes</li>
+        <li>Tasks</li>
+        <li>Calendar</li>
+      </ul>
+    </aside>
+    {/* Main Content */}
+    <main style={{ flex: 1, padding: '24px' }}>
+      <h1>Dashboard Title</h1>
+      <div style={{ border: '1px solid #ccc', padding: '8px', margin: '16px 0' }}>
+        Empty page content here
       </div>
+    </main>
+  </div>
+)
 
-      {/* Form */}
-      <div className="mt-3 grid grid-cols-1 gap-3">
-        <label className="text-xs font-medium text-neutral-700">Lecture Title (Optional)</label>
-        <input
-          type="text"
-          placeholder="Enter Lecture Title..."
-          value={lectureTitle}
-          onChange={(e) => setLectureTitle(e.target.value)}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-sky-400"
-        />
-        <div className="mt-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-neutral-700">Subject/Course (Optional)</label>
-            <button onClick={addNewSubject} className="ml-2 inline-flex items-center gap-1 rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50">+ New</button>
-          </div>
-          <select
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="mt-1 w-full rounded-md border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
-          >
-            {subjects.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Start */}
-      <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={() => setIsDocked((v) => !v)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-xs hover:bg-neutral-50"
-        >
-          {isDocked ? "Undock" : "Dock"}
-        </button>
-        <button
-          onClick={() => {
-            lsSet("ll:newMeeting", JSON.stringify({ lectureTitle, subjects, subject, isDocked }));
-            if (typeof onStart === "function") { onStart(); return; }
-            if (hasWindow) { window.location.hash = "#/live"; }
-          }}
-          className="rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
-        >
-          Start
-        </button>
-      </div>
-    </div>
-  );
 }
 
 // ---------------- Live Session ----------------
@@ -358,10 +319,15 @@ export function LiveSessionPage({ controller }: { controller?: TranscriptControl
 
 // ---------------- Default export for preview/build (hash router) ----------------
 export default function App() {
-  const [route, navigate] = useHashRouter();
-  if (route === "/live") return <LiveSessionPage />;
-  return <NewMeetingPage onStart={() => navigate("/live")} />;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  return (
+    <div style={{ display: 'flex', height: '100vh' }}>
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(c => !c)} />
+      <DashboardMain sidebarCollapsed={sidebarCollapsed} />
+    </div>
+  );
 }
+
 
 // ---------------- Inline tests (exported, not auto-run) ----------------
 export function __runLiveLectureInlineTests(): { passed: number; total: number; results: TestResult[] } {
