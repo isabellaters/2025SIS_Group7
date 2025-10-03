@@ -1,10 +1,21 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import { error } from 'console';
 import { processLectureData } from './services/gemini';
 import { LectureService } from './services/lecture';
+import { SpeechToTextService } from './services/speech-to-text';
+import { TranslationService } from './services/translation';
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: ['http://localhost:5173', 'http://localhost:3001'],
+    methods: ['GET', 'POST']
+  }
+});
 const PORT = 3001;
 
 app.use(cors());
@@ -68,8 +79,127 @@ app.patch("/api/transcripts/:id", async (req, res) => {
 });
 
 
-app.listen(PORT, () => {
+// Socket.IO for real-time audio streaming and transcription
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  let speechService: SpeechToTextService | null = null;
+  let translationService: TranslationService | null = null;
+  let recognizeStream: any = null;
+  let targetLanguage: string = 'es'; // Default to Spanish
+  let translationEnabled: boolean = false; // Default to disabled
+  let lastTranslatedText: string = ''; // Track last translated text to avoid duplicates
+
+  socket.on('set-target-language', (language: string) => {
+    console.log(`Setting target language to ${language} for client:`, socket.id);
+    targetLanguage = language;
+  });
+
+  socket.on('set-translation-enabled', (enabled: boolean) => {
+    console.log(`Setting translation enabled to ${enabled} for client:`, socket.id);
+    translationEnabled = enabled;
+    if (!enabled) {
+      lastTranslatedText = ''; // Reset when disabling
+    }
+  });
+
+  socket.on('start-transcription', () => {
+    console.log('Starting transcription for client:', socket.id);
+
+    speechService = new SpeechToTextService();
+    translationService = new TranslationService();
+
+    // Capture the translation service reference for the callback
+    const currentTranslationService = translationService;
+
+    recognizeStream = speechService.startStreaming(
+      async (result) => {
+        // Emit transcript
+        socket.emit('transcript', result);
+
+        // Translate both interim and final results for real-time translation
+        // Only translate if translation is enabled, text is different, and has meaningful content
+        const textToTranslate = result.transcript.trim();
+        const shouldTranslate = translationEnabled &&
+                               textToTranslate &&
+                               textToTranslate !== lastTranslatedText &&
+                               textToTranslate.length > 3 && // At least a few characters
+                               currentTranslationService;
+
+        if (shouldTranslate) {
+          try {
+            console.log(`[TRANSLATING ${result.isFinal ? 'FINAL' : 'INTERIM'}] "${textToTranslate}" to ${targetLanguage}...`);
+            const translation = await currentTranslationService.translateText(
+              textToTranslate,
+              targetLanguage,
+              'en'
+            );
+
+            // Update last translated text
+            lastTranslatedText = textToTranslate;
+
+            socket.emit('translation', {
+              original: textToTranslate,
+              translated: translation.translatedText,
+              targetLanguage,
+              detectedSourceLanguage: translation.detectedSourceLanguage,
+              isFinal: result.isFinal
+            });
+            console.log(`[TRANSLATED] "${textToTranslate}" -> "${translation.translatedText}"`);
+          } catch (error: any) {
+            console.error('[TRANSLATION ERROR]', error);
+            socket.emit('translation-error', { error: error.message });
+          }
+        }
+
+        // Reset tracking when we get a final result
+        if (result.isFinal) {
+          lastTranslatedText = '';
+        }
+      },
+      (error) => {
+        console.error('Transcription error:', error);
+        socket.emit('transcription-error', { error: error.message });
+      }
+    );
+  });
+
+  let audioChunkCount = 0;
+  socket.on('audio-data', (audioChunk: Buffer) => {
+    if (recognizeStream) {
+      recognizeStream.write(audioChunk);
+      audioChunkCount++;
+      if (audioChunkCount % 50 === 0) {
+        console.log(`Received ${audioChunkCount} audio chunks from client`);
+      }
+    } else {
+      console.warn('Received audio data but recognizeStream is not initialized');
+    }
+  });
+
+  socket.on('stop-transcription', () => {
+    console.log('Stopping transcription for client:', socket.id);
+    if (speechService) {
+      speechService.stopStreaming();
+      speechService = null;
+      translationService = null;
+      recognizeStream = null;
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    if (speechService) {
+      speechService.stopStreaming();
+      speechService = null;
+      translationService = null;
+    }
+  });
+});
+
+httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Socket.IO server ready for real-time transcription`);
 });
 
 // Lecture 
