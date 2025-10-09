@@ -3,9 +3,10 @@ import React from 'react';
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  onNewRecording?: () => void;
 }
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onNewRecording }: SidebarProps) {
   return (
     <aside
       style={{
@@ -80,7 +81,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         )}
       </div>
       {/* New Recording Button */}
-      <button style={{
+      <button onClick={onNewRecording} style={{
         width: collapsed ? 48 : '88%',
         background: '#2563eb',
         color: '#fff',
