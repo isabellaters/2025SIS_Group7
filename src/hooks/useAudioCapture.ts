@@ -14,10 +14,6 @@ import type { AudioSource, TranscriptResult, TranslationResult } from '../types'
  * - Audio level monitoring
  */
 export function useAudioCapture() {
-  // Audio sources and selection
-  const [audioSources, setAudioSources] = useState<AudioSource[]>([]);
-  const [selectedSource, setSelectedSource] = useState<string>('');
-
   // Capture state
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
   const [audioLevel, setAudioLevel] = useState<number>(0);
@@ -36,29 +32,17 @@ export function useAudioCapture() {
   const [audioService] = useState(() => new AudioCaptureService());
   const [socketService] = useState(() => new TranscriptionSocketService());
 
-  // Load available audio sources
-  const loadAudioSources = async () => {
-    try {
-      console.log('Loading audio sources...');
-      const sources = await audioService.getAudioSources();
-      console.log('Audio sources loaded:', sources);
-      setAudioSources(sources);
-      if (sources.length > 0) {
-        setSelectedSource(sources[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load audio sources:', error);
-    }
-  };
-
   // Start audio capture and transcription
   const startCapture = async () => {
-    if (!selectedSource) {
-      console.error('No audio source selected');
-      return;
-    }
-
     try {
+      // Get first available audio source
+      const sources = await audioService.getAudioSources();
+      if (sources.length === 0) {
+        console.error('No audio sources available');
+        return;
+      }
+      const selectedSource = sources[0].id;
+
       console.log('Starting audio capture for source:', selectedSource);
       setIsCapturing(true);
       socketService.startTranscription();
@@ -98,9 +82,6 @@ export function useAudioCapture() {
 
   // Initialize on mount
   useEffect(() => {
-    // Load audio sources
-    loadAudioSources();
-
     // Connect to transcription socket
     console.log('Connecting to transcription socket...');
     socketService.connect();
@@ -109,8 +90,11 @@ export function useAudioCapture() {
     socketService.onTranscript((result: TranscriptResult) => {
       console.log('Received transcript:', result);
       if (result.isFinal) {
-        // Final transcript - add to permanent list
-        setTranscriptLines((prev) => [...prev, result.transcript]);
+        // Final transcript - add to permanent list only if not empty/whitespace
+        const trimmedTranscript = result.transcript.trim();
+        if (trimmedTranscript) {
+          setTranscriptLines((prev) => [...prev, result.transcript]);
+        }
         setInterimTranscript(''); // Clear interim
       } else {
         // Interim transcript - temporary display
@@ -122,8 +106,11 @@ export function useAudioCapture() {
     socketService.onTranslation((result: TranslationResult) => {
       console.log('Received translation:', result);
       if (result.isFinal) {
-        // Final translation - add to permanent list
-        setTranslationLines((prev) => [...prev, result.translated]);
+        // Final translation - add to permanent list only if not empty/whitespace
+        const trimmedTranslation = result.translated.trim();
+        if (trimmedTranslation) {
+          setTranslationLines((prev) => [...prev, result.translated]);
+        }
         setInterimTranslation(''); // Clear interim
       } else {
         // Interim translation - temporary display
@@ -157,11 +144,6 @@ export function useAudioCapture() {
   };
 
   return {
-    // Audio sources
-    audioSources,
-    selectedSource,
-    setSelectedSource,
-
     // Capture state
     isCapturing,
     audioLevel,

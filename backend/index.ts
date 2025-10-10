@@ -228,3 +228,46 @@ app.patch("/api/lectures/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to update lecture" });
   }
 });
+
+// Save lecture with transcript
+app.post("/api/lectures/save", async (req, res) => {
+  try {
+    const { title, transcript, translation, translationLanguage } = req.body;
+
+    if (!title || !transcript) {
+      return res.status(400).json({ error: "Title and transcript are required" });
+    }
+
+    // Create transcript first - only include fields with values
+    const transcriptData: any = {
+      text: transcript,
+      status: 'completed'
+    };
+
+    if (translation) {
+      transcriptData.translation = translation;
+    }
+
+    if (translationLanguage) {
+      transcriptData.translationLanguage = translationLanguage;
+    }
+
+    const transcriptId = await LectureService.createTranscript(transcriptData);
+
+    // Create lecture with reference to transcript
+    const lectureId = await LectureService.createLecture({
+      title,
+      transcriptId,
+      status: 'completed'
+    });
+
+    res.json({
+      success: true,
+      lectureId,
+      transcriptId
+    });
+  } catch (err) {
+    console.error('Error saving lecture:', err);
+    res.status(500).json({ error: "Failed to save lecture" });
+  }
+});
