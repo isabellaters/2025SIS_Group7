@@ -1,10 +1,5 @@
 import React from 'react';
-
-export interface AudioSource {
-  id: string;
-  name: string;
-  thumbnail: string;
-}
+import type { AudioSource } from '../types';
 
 interface AudioSourceSelectorProps {
   sources: AudioSource[];

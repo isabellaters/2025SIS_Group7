@@ -5,6 +5,7 @@ import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { TranscriptDisplay } from './TranscriptDisplay';
 import { TransportControls } from './TransportControls';
 import { LanguageSelector } from './LanguageSelector';
+import { ExportButton } from './ExportButton';
 import { lsGet, lsSet, UI_PREF_KEY } from '../utils/storage';
 import { isElectron } from '../utils/environment';
 import type { TranscriptController } from '../types';
@@ -98,6 +99,11 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
             translationEnabled={translationEnabled}
             onToggleTranslation={toggleTranslation}
             disabled={isCapturing}
+          />
+          <ExportButton
+            transcriptLines={transcriptLines}
+            translationLines={translationLines}
+            title={title}
           />
           <AudioLevelIndicator audioLevel={audioLevel} isCapturing={isCapturing} />
           <button
