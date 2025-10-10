@@ -45,10 +45,18 @@
     "firebase": "^12.2.1"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.2",
+    "concurrently": "^9.2.1",
     "electron": "^33.2.0",
     "electron-builder": "^24.13.3",
+    "vite": "^7.1.5",
     "vite-plugin-electron": "^0.29.0",
+<<<<<<< HEAD
     "vite-plugin-electron-renderer": "^0.14.6"
 >>>>>>> 6ef5aac (Add glossary highlighting feature with mock transcript and glossary list)
+=======
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "wait-on": "^8.0.5"
+>>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)
   }
 }

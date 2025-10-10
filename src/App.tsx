@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React, { useEffect, useMemo, useState } from "react";
 =======
 <<<<<<< HEAD
@@ -136,6 +137,39 @@ export function NewMeetingPage({ onStart }: { onStart?: () => void }) {
     : isDocked
       ? "fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[min(1100px,90vw)] rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
       : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-white p-6";
+=======
+import { useEffect, useState } from "react";
+
+type Glossary = Record<string, string>;
+
+function App() {
+  const [transcript, setTranscript] = useState<string>("");
+  const [glossary, setGlossary] = useState<Glossary>({});
+
+  useEffect(() => {
+    // Fetch transcript
+    fetch("/api/transcript")
+      .then((res) => res.json())
+      .then((data) => setTranscript(data.text));
+
+    // Fetch glossary
+    fetch("/api/glossary")
+      .then((res) => res.json())
+      .then((data) => setGlossary(data));
+  }, []);
+
+  function highlightTranscript(text: string): string {
+    let highlighted = text;
+    for (const term in glossary) {
+      const regex = new RegExp(`\\b${term}\\b`, "gi");
+      highlighted = highlighted.replace(
+        regex,
+        `<mark title="${glossary[term]}">${term}</mark>`
+      );
+    }
+    return highlighted;
+  }
+>>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)
 
   return (
     <div className={containerClasses}>
@@ -179,6 +213,7 @@ export function NewMeetingPage({ onStart }: { onStart?: () => void }) {
         </div>
       </div>
 
+<<<<<<< HEAD
       {/* Start */}
       <div className="mt-4 flex justify-end gap-2">
         <button
@@ -198,6 +233,17 @@ export function NewMeetingPage({ onStart }: { onStart?: () => void }) {
           Start
         </button>
       </div>
+=======
+      {/* Glossary section */}
+      <h2 style={{ marginTop: "20px" }}>Glossary</h2>
+      <ul>
+        {Object.entries(glossary).map(([term, definition]) => (
+          <li key={term}>
+            <b>{term}</b>: {definition}
+          </li>
+        ))}
+      </ul>
+>>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)
     </div>
   );
 }
@@ -429,6 +475,7 @@ export function __runLiveLectureInlineTests(): { passed: number; total: number; 
 }
 =======
 export default App;
+<<<<<<< HEAD
 =======
 function App() {
   return (
@@ -442,3 +489,5 @@ function App() {
 export default App
 >>>>>>> 2166452 (Add glossary highlighting feature with mock transcript and glossary list)
 >>>>>>> 6ef5aac (Add glossary highlighting feature with mock transcript and glossary list)
+=======
+>>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)
