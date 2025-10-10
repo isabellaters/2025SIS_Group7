@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useAudioCapture } from '../hooks/useAudioCapture';
-import { AudioSourceSelector } from './AudioSourceSelector';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { TranscriptDisplay } from './TranscriptDisplay';
 import { TransportControls } from './TransportControls';
@@ -21,9 +20,6 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
 
   // Use audio capture hook for all audio/transcription functionality
   const {
-    audioSources,
-    selectedSource,
-    setSelectedSource,
     isCapturing,
     audioLevel,
     transcriptLines,
@@ -81,14 +77,6 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     <div className={containerClasses}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 cursor-default">
-        <div className="flex items-center gap-1.5">
-          <AudioSourceSelector
-            sources={audioSources}
-            selectedSource={selectedSource}
-            isCapturing={isCapturing}
-            onSourceChange={setSelectedSource}
-          />
-        </div>
         <div className="flex-1 text-center text-sm font-medium text-neutral-700 truncate px-2" title={title}>
           {title}
         </div>
