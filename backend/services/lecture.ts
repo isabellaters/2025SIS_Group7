@@ -1,7 +1,7 @@
 
 import type { Transcript, Lecture } from "../../src/types/index";
 import { db } from "./firebase";
-import { collection, doc, addDoc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
+import admin from 'firebase-admin';
 
 const TRANSCRIPTS_COLLECTION = "transcripts";
 const LECTURES_COLLECTION = "lectures";
@@ -10,14 +10,14 @@ export class LectureService {
   // ------------------ Transcripts ------------------
   static async createTranscript(data: Omit<Transcript, "id" | "createdAt" | "updatedAt">): Promise<string> {
     try {
-      const now = Timestamp.now();
+      const now = admin.firestore.Timestamp.now();
       const transcript: Omit<Transcript, "id"> = {
         ...data,
         status: data.status || "processing",
         createdAt: now,
         updatedAt: now,
       };
-      const docRef = await addDoc(collection(db, TRANSCRIPTS_COLLECTION), transcript);
+      const docRef = await db.collection(TRANSCRIPTS_COLLECTION).add(transcript);
       return docRef.id;
     } catch (err) {
       console.error("Error creating transcript:", err);
@@ -27,9 +27,9 @@ export class LectureService {
 
   static async findTranscript(id: string): Promise<Transcript | null> {
     try {
-      const docRef = doc(db, TRANSCRIPTS_COLLECTION, id);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) return null;
+      const docRef = db.collection(TRANSCRIPTS_COLLECTION).doc(id);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) return null;
       return { id: docSnap.id, ...docSnap.data() } as Transcript;
     } catch (err) {
       console.error("Error fetching transcript:", err);
@@ -39,8 +39,8 @@ export class LectureService {
 
   static async updateTranscript(id: string, data: Partial<Transcript>): Promise<void> {
     try {
-      const docRef = doc(db, TRANSCRIPTS_COLLECTION, id);
-      await updateDoc(docRef, { ...data, updatedAt: Timestamp.now() });
+      const docRef = db.collection(TRANSCRIPTS_COLLECTION).doc(id);
+      await docRef.update({ ...data, updatedAt: admin.firestore.Timestamp.now() });
     } catch (err) {
       console.error("Error updating transcript:", err);
       throw err;
@@ -50,14 +50,14 @@ export class LectureService {
   // ------------------ Lectures ------------------
   static async createLecture(data: Omit<Lecture, "id" | "createdAt" | "updatedAt">): Promise<string> {
     try {
-      const now = Timestamp.now();
+      const now = admin.firestore.Timestamp.now();
       const lecture: Omit<Lecture, "id"> = {
         ...data,
         createdAt: now,
         updatedAt: now,
         status: data.status || "processing",
       };
-      const docRef = await addDoc(collection(db, LECTURES_COLLECTION), lecture);
+      const docRef = await db.collection(LECTURES_COLLECTION).add(lecture);
       return docRef.id;
     } catch (err) {
       console.error("Error creating lecture:", err);
@@ -67,9 +67,9 @@ export class LectureService {
 
   static async findLecture(id: string): Promise<Lecture | null> {
     try {
-      const docRef = doc(db, LECTURES_COLLECTION, id);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) return null;
+      const docRef = db.collection(LECTURES_COLLECTION).doc(id);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) return null;
       return { id: docSnap.id, ...docSnap.data() } as Lecture;
     } catch (err) {
       console.error("Error fetching lecture:", err);
@@ -79,8 +79,8 @@ export class LectureService {
 
   static async updateLecture(id: string, data: Partial<Lecture>): Promise<void> {
     try {
-      const docRef = doc(db, LECTURES_COLLECTION, id);
-      await updateDoc(docRef, { ...data, updatedAt: Timestamp.now() });
+      const docRef = db.collection(LECTURES_COLLECTION).doc(id);
+      await docRef.update({ ...data, updatedAt: admin.firestore.Timestamp.now() });
     } catch (err) {
       console.error("Error updating lecture:", err);
       throw err;

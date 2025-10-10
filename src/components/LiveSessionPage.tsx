@@ -5,6 +5,7 @@ import { TranscriptDisplay } from './TranscriptDisplay';
 import { TransportControls } from './TransportControls';
 import { LanguageSelector } from './LanguageSelector';
 import { ExportButton } from './ExportButton';
+import { SaveLectureButton } from './SaveLectureButton';
 import { lsGet, lsSet, UI_PREF_KEY } from '../utils/storage';
 import { isElectron } from '../utils/environment';
 import type { TranscriptController } from '../types';
@@ -92,6 +93,13 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
             transcriptLines={transcriptLines}
             translationLines={translationLines}
             title={title}
+          />
+          <SaveLectureButton
+            title={title}
+            transcriptLines={transcriptLines}
+            translationLines={translationLines}
+            targetLanguage={targetLanguage}
+            disabled={isCapturing || transcriptLines.length === 0}
           />
           <AudioLevelIndicator audioLevel={audioLevel} isCapturing={isCapturing} />
           <button
