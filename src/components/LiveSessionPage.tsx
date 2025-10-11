@@ -100,6 +100,7 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
             translationLines={translationLines}
             targetLanguage={targetLanguage}
             disabled={isCapturing || transcriptLines.length === 0}
+            onSuccess={() => { window.location.hash = '#/review'; }}
           />
           <AudioLevelIndicator audioLevel={audioLevel} isCapturing={isCapturing} />
           <button
