@@ -1,7 +1,7 @@
 // electron/main/main.js
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, screen } = require("electron");
+const { app, BrowserWindow, screen, ipcMain, desktopCapturer } = require("electron");
 
 let win = null;
 const isDev = !app.isPackaged;
@@ -10,22 +10,25 @@ const isDev = !app.isPackaged;
 function createWindow() {
   if (win && !win.isDestroyed()) return;
 
-  // Size & position so it can sit near the bottom of the screen (under Teams)
+  // Default window size - reasonable dimensions for the app
   const { workArea } = screen.getPrimaryDisplay();
-  const WIDTH = Math.min(1100, workArea.width - 24);
-  const HEIGHT = 260;
+  const WIDTH = Math.min(1200, workArea.width - 100);
+  const HEIGHT = Math.min(800, workArea.height - 100);
   const X = Math.round(workArea.x + (workArea.width - WIDTH) / 2);
-  const Y = Math.round(workArea.y + workArea.height - HEIGHT - 24);
+  const Y = Math.round(workArea.y + (workArea.height - HEIGHT) / 2);
 
-  // Optional preload (only if the file exists)
-  const preloadPath = path.resolve(__dirname, "preload.js");
-  const hasPreload = fs.existsSync(preloadPath);
+  // Preload script path
+  const preloadPath = isDev
+    ? path.resolve(__dirname, "../preload/index.js")
+    : path.resolve(__dirname, "../preload/index.mjs");
 
   win = new BrowserWindow({
     width: WIDTH,
     height: HEIGHT,
     x: X,
     y: Y,
+    minWidth: 800,           // Minimum width
+    minHeight: 600,          // Minimum height
     show: false,             // show after first paint
     frame: true,             // keep the native titlebar (no duplicate custom bar)
     titleBarStyle: "default",
@@ -35,8 +38,8 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
-      ...(hasPreload ? { preload: preloadPath } : {}),
+      sandbox: false,          // Changed to false to allow desktopCapturer
+      preload: preloadPath,
     },
   });
 
@@ -79,3 +82,21 @@ if (!gotLock) {
     if (process.platform !== "darwin") app.quit();
   });
 }
+
+// Desktop Audio Capture - Get available audio sources
+ipcMain.handle('get-audio-sources', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['window', 'screen'],
+      fetchWindowIcons: true
+    });
+    return sources.map(source => ({
+      id: source.id,
+      name: source.name,
+      thumbnail: source.thumbnail.toDataURL()
+    }));
+  } catch (error) {
+    console.error('Error getting audio sources:', error);
+    throw error;
+  }
+});

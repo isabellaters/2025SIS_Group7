@@ -1,11 +1,23 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { error } from 'console';
 import { processLectureData } from './services/gemini';
 import { LectureService } from './services/lecture';
+import { SpeechToTextService } from './services/speech-to-text';
+import { TranslationService } from './services/translation';
 
-console.log("index.ts loaded from:", __dirname);
+console.log("index.ts loaded successfully — merged version (Haley + main)");
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: ['http://localhost:5173', 'http://localhost:3001'],
+    methods: ['GET', 'POST']
+  }
+});
 const PORT = 3001;
 
 // Middleware
@@ -96,9 +108,44 @@ app.patch("/api/lectures/:id", async (req: Request, res: Response) => {
   }
 });
 
-/* ------------------------------- Glossary API ----------------------------- */
-console.log("Glossary route is loaded!");
+// Save lecture with transcript
+app.post("/api/lectures/save", async (req: Request, res: Response) => {
+  try {
+    const { title, transcript, translation, translationLanguage } = req.body;
 
+    if (!title || !transcript) {
+      return res.status(400).json({ error: "Title and transcript are required" });
+    }
+
+    const transcriptData: any = {
+      text: transcript,
+      status: 'completed',
+    };
+
+    if (translation) transcriptData.translation = translation;
+    if (translationLanguage) transcriptData.translationLanguage = translationLanguage;
+
+    const transcriptId = await LectureService.createTranscript(transcriptData);
+
+    const lectureId = await LectureService.createLecture({
+      title,
+      transcriptId,
+      status: 'completed'
+    });
+
+    res.json({
+      success: true,
+      lectureId,
+      transcriptId
+    });
+  } catch (err) {
+    console.error('Error saving lecture:', err);
+    res.status(500).json({ error: "Failed to save lecture" });
+  }
+});
+
+/* ------------------------------- Glossary API ----------------------------- */
+console.log("📘 Glossary route is loaded!");
 app.get("/api/glossary", async (req: Request, res: Response) => {
   try {
     const glossary = {
@@ -115,8 +162,104 @@ app.get("/api/glossary", async (req: Request, res: Response) => {
   }
 });
 
+/* ---------------------------- Socket.IO Streaming ---------------------------- */
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  let speechService: SpeechToTextService | null = null;
+  let translationService: TranslationService | null = null;
+  let recognizeStream: any = null;
+  let targetLanguage: string = 'es'; // Default to Spanish
+  let translationEnabled: boolean = false;
+  let lastTranslatedText: string = '';
+
+  socket.on('set-target-language', (language: string) => {
+    targetLanguage = language;
+  });
+
+  socket.on('set-translation-enabled', (enabled: boolean) => {
+    translationEnabled = enabled;
+    if (!enabled) lastTranslatedText = '';
+  });
+
+  socket.on('start-transcription', () => {
+    speechService = new SpeechToTextService();
+    translationService = new TranslationService();
+
+    const currentTranslationService = translationService;
+
+    recognizeStream = speechService.startStreaming(
+      async (result) => {
+        socket.emit('transcript', result);
+
+        const textToTranslate = result.transcript.trim();
+        const shouldTranslate = translationEnabled &&
+          textToTranslate &&
+          textToTranslate !== lastTranslatedText &&
+          textToTranslate.length > 3 &&
+          currentTranslationService;
+
+        if (shouldTranslate) {
+          try {
+            const translation = await currentTranslationService.translateText(
+              textToTranslate,
+              targetLanguage,
+              'en'
+            );
+
+            lastTranslatedText = textToTranslate;
+
+            socket.emit('translation', {
+              original: textToTranslate,
+              translated: translation.translatedText,
+              targetLanguage,
+              detectedSourceLanguage: translation.detectedSourceLanguage,
+              isFinal: result.isFinal
+            });
+          } catch (error: any) {
+            console.error('[TRANSLATION ERROR]', error);
+            socket.emit('translation-error', { error: error.message });
+          }
+        }
+
+        if (result.isFinal) lastTranslatedText = '';
+      },
+      (error) => {
+        console.error('Transcription error:', error);
+        socket.emit('transcription-error', { error: error.message });
+      }
+    );
+  });
+
+  socket.on('audio-data', (audioChunk: Buffer) => {
+    if (recognizeStream) {
+      recognizeStream.write(audioChunk);
+    } else {
+      console.warn('Received audio data but recognizeStream is not initialized');
+    }
+  });
+
+  socket.on('stop-transcription', () => {
+    if (speechService) {
+      speechService.stopStreaming();
+      speechService = null;
+      translationService = null;
+      recognizeStream = null;
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+    if (speechService) {
+      speechService.stopStreaming();
+      speechService = null;
+      translationService = null;
+    }
+  });
+});
+
 /* ------------------------------- Start Server ----------------------------- */
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-  console.log("Socket.IO not initialized in this version — Haley’s clean build");
+  console.log(`Socket.IO server ready for real-time transcription`);
 });

@@ -1,15 +1,17 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
 import React, { useEffect, useMemo, useState } from "react";
-=======
-<<<<<<< HEAD
+
 import { useState } from "react";
->>>>>>> 6ef5aac (Add glossary highlighting feature with mock transcript and glossary list)
+
+import { useHashRouter } from './hooks/useHashRouter';
+import { NewMeetingPage } from './components/NewMeetingPage';
+import { LiveSessionPage } from './components/LiveSessionPage';
+import { ReviewPage } from "./components/ReviewPage";
 
 /**
- * LiveLecture – New Meeting + Live Session (Electron-friendly, hash routing)
- * TypeScript-safe (noImplicitAny) version
+ * LiveLecture App - Main entry point
+ * Uses hash routing for Electron compatibility
  */
+
 
 // ---------------- Types ----------------
 export type UpdateKind = "transcript" | "translation";
@@ -137,7 +139,7 @@ export function NewMeetingPage({ onStart }: { onStart?: () => void }) {
     : isDocked
       ? "fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[min(1100px,90vw)] rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
       : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-white p-6";
-=======
+
 import { useEffect, useState } from "react";
 
 type Glossary = Record<string, string>;
@@ -169,7 +171,6 @@ function App() {
     }
     return highlighted;
   }
->>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)
 
   return (
     <div className={containerClasses}>
@@ -213,7 +214,7 @@ function App() {
         </div>
       </div>
 
-<<<<<<< HEAD
+
       {/* Start */}
       <div className="mt-4 flex justify-end gap-2">
         <button
@@ -233,7 +234,7 @@ function App() {
           Start
         </button>
       </div>
-=======
+
       {/* Glossary section */}
       <h2 style={{ marginTop: "20px" }}>Glossary</h2>
       <ul>
@@ -243,12 +244,12 @@ function App() {
           </li>
         ))}
       </ul>
->>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)
+
     </div>
   );
 }
 
-<<<<<<< HEAD
+
 // ---------------- Live Session ----------------
 export function LiveSessionPage({ controller }: { controller?: TranscriptController }) {
   const [isDocked, setIsDocked] = useState<boolean>(true);
@@ -409,74 +410,22 @@ export function LiveSessionPage({ controller }: { controller?: TranscriptControl
 }
 
 // ---------------- Default export for preview/build (hash router) ----------------
+
 export default function App() {
   const [route, navigate] = useHashRouter();
-  if (route === "/live") return <LiveSessionPage />;
+
+  if (route === "/live") {
+    return <LiveSessionPage />;
+  }
+
+  if (route === "/review") return <ReviewPage />;
+
+
   return <NewMeetingPage onStart={() => navigate("/live")} />;
 }
 
-// ---------------- Inline tests (exported, not auto-run) ----------------
-export function __runLiveLectureInlineTests(): { passed: number; total: number; results: TestResult[] } {
-  const results: TestResult[] = [];
-  const test = (name: string, fn: () => void) => {
-    try { fn(); results.push({ name, ok: true }); }
-    catch (e: unknown) { results.push({ name, ok: false, error: String((e as any)?.message ?? e) }); }
-  };
-
-  // Existing tests (unchanged)
-  test("appendLine adds newline when prev exists", () => {
-    const out = appendLine("a", "b");
-    if (out !== "a\nb") throw new Error(out);
-  });
-  test("appendLine returns next when prev empty", () => {
-    const out = appendLine("", "b");
-    if (out !== "b") throw new Error(out);
-  });
-  test("appendLine is associative for simple strings", () => {
-    const out1 = appendLine(appendLine("a", "b"), "c"); // a\nb\nc
-    const out2 = appendLine("a", appendLine("b", "c")); // a\nb\nc
-    if (out1 !== out2) throw new Error(`${out1} !== ${out2}`);
-  });
-
-  // Extra tests
-  test("appendLine handles unicode", () => {
-    const out = appendLine("α", "β");
-    if (out !== "α\nβ") throw new Error(out);
-  });
-  test("appendLine with empty next returns prev unchanged", () => {
-    const out = appendLine("hello", "");
-    if (out !== "hello\n") throw new Error(out);
-  });
-  test("appendLine with both empty returns empty", () => {
-    const out = appendLine("", "");
-    if (out !== "") throw new Error(out);
-  });
-  // Helper tests
-  test("clamp limits to range", () => {
-    if (clamp(10, 0, 5) !== 5) throw new Error("clamp high failed");
-    if (clamp(-2, 0, 5) !== 0) throw new Error("clamp low failed");
-    if (clamp(3, 0, 5) !== 3) throw new Error("clamp mid failed");
-  });
-  test("padToSameLength aligns arrays with blanks", () => {
-    const [a, b] = padToSameLength(["x"], ["y","z"]);
-    if (a.length !== 2 || b.length !== 2) throw new Error("length mismatch");
-    if (a[1] !== "" || b[0] !== "y" || b[1] !== "z") throw new Error("content mismatch");
-  });
-  test("parseHashRoute basics", () => {
-    if (parseHashRoute("") !== "/") throw new Error("empty -> /");
-    if (parseHashRoute("#") !== "/") throw new Error("# -> /");
-    if (parseHashRoute("#/live") !== "/live") throw new Error("#/live -> /live");
-    if (parseHashRoute("#live") !== "/live") throw new Error("#live -> /live");
-    if (parseHashRoute("/live") !== "/live") throw new Error("/live -> /live");
-  });
-
-  const passed = results.filter(r => r.ok).length;
-  return { passed, total: results.length, results };
-}
-=======
 export default App;
-<<<<<<< HEAD
-=======
+
 function App() {
   return (
     <div>
@@ -487,7 +436,3 @@ function App() {
 }
 
 export default App
->>>>>>> 2166452 (Add glossary highlighting feature with mock transcript and glossary list)
->>>>>>> 6ef5aac (Add glossary highlighting feature with mock transcript and glossary list)
-=======
->>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)

@@ -1,5 +1,5 @@
 {
-<<<<<<< HEAD
+
   "name": "livelecture",
   "private": true,
   "main": "electron/main/main.js",
@@ -24,9 +24,12 @@
     "wait-on": "^7.0.0"
   },
   "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
     "react": "^18.3.0",
+
     "react-dom": "^18.3.0"
-=======
+
   "name": "live-lecture-application",
   "version": "1.0.0",
   "main": "dist-electron/main/index.js",
@@ -51,12 +54,15 @@
     "electron-builder": "^24.13.3",
     "vite": "^7.1.5",
     "vite-plugin-electron": "^0.29.0",
-<<<<<<< HEAD
+
     "vite-plugin-electron-renderer": "^0.14.6"
->>>>>>> 6ef5aac (Add glossary highlighting feature with mock transcript and glossary list)
-=======
+
+
     "vite-plugin-electron-renderer": "^0.14.6",
     "wait-on": "^8.0.5"
->>>>>>> 54a0df1 (WIP: preparing to rebase with backend setup)
+
+    "react-dom": "^18.3.0",
+    "socket.io-client": "^4.8.1"
+
   }
 }
