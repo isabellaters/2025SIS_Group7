@@ -1,6 +1,7 @@
 import { useHashRouter } from './hooks/useHashRouter';
 import { NewMeetingPage } from './components/NewMeetingPage';
 import { LiveSessionPage } from './components/LiveSessionPage';
+import { ReviewPage } from "./components/ReviewPage";
 
 /**
  * LiveLecture App - Main entry point
@@ -12,6 +13,9 @@ export default function App() {
   if (route === "/live") {
     return <LiveSessionPage />;
   }
+
+  if (route === "/review") return <ReviewPage />;
+
 
   return <NewMeetingPage onStart={() => navigate("/live")} />;
 }

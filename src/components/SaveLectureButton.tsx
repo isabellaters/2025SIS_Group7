@@ -6,6 +6,7 @@ interface SaveLectureButtonProps {
   translationLines: string[];
   targetLanguage?: string;
   disabled?: boolean;
+  onSuccess?: (result: any) => void;
 }
 
 export function SaveLectureButton({
@@ -14,6 +15,7 @@ export function SaveLectureButton({
   translationLines,
   targetLanguage,
   disabled = false,
+  onSuccess,
 }: SaveLectureButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
