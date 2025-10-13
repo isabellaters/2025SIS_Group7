@@ -1,28 +1,36 @@
 {
-  "name": "backend",
+  "name": "livelecture",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "main": "electron/main/main.js",
   "scripts": {
-    "dev": "nodemon --watch \"./**/*.ts\" --exec ts-node index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently -k \"npm run dev --prefix backend\" \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:renderer": "vite build",
+    "build": "npm run build:renderer"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@google/genai": "^1.21.0",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
+    "electron-updater": "^6.3.9",
     "express": "^5.1.0",
-    "firebase": "^12.3.0"
+    "firebase": "^12.2.1",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.13",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
-    "@types/node": "^24.5.2",
-    "nodemon": "^3.1.10",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^4.0.0",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^8.0.0",
+    "electron": "^38.2.2",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.2.2",
+    "vite": "^7.1.9",
+    "wait-on": "^7.0.0"
   }
 }
