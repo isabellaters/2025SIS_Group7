@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useAudioCapture } from '../hooks/useAudioCapture';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { TranscriptDisplay } from './TranscriptDisplay';
@@ -15,9 +15,9 @@ interface LiveSessionPageProps {
 }
 
 export function LiveSessionPage({ controller }: LiveSessionPageProps) {
-  const [isDocked, setIsDocked] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"Transcription" | "Translation">("Transcription");
-  const [title, setTitle] = useState<string>("Untitled Session");
+  const [isDocked, setIsDocked] = React.useState<boolean>(true);
+  const [activeTab, setActiveTab] = React.useState<"Transcription" | "Translation">("Transcription");
+  const [title, setTitle] = React.useState<string>("Untitled Session");
 
   // Use audio capture hook for all audio/transcription functionality
   const {
@@ -52,13 +52,22 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     lsSet(UI_PREF_KEY, JSON.stringify({ docked: isDocked }));
   }, [isDocked]);
 
-  // Simple toggle for start/stop recording
+  // Start/stop using the hook’s capture functions (no local isCapturing state)
   const handleToggle = async (): Promise<void> => {
     if (isCapturing) {
-      stopCapture();
+      await stopCapture();
     } else {
       await startCapture();
     }
+  };
+
+  // End Session: stop if needed, then go to Review via hash (consistent with your app)
+  const handleEndSession = async () => {
+    if (isCapturing) {
+      await stopCapture();
+    }
+    console.log("Session ended — redirecting to Review Page");
+    window.location.hash = '#/review';
   };
 
   const containerClasses = isElectron
@@ -67,7 +76,6 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
       ? "fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[min(1100px,90vw)] rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
       : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-white p-6";
 
-  // Build translation display with interim results
   const translationText = translationLines.join("\n") +
     (interimTranslation ? `\n[${interimTranslation}]` : '');
   const displayText = translationText.trim() || "Translation stream…";
@@ -152,6 +160,7 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
         <TransportControls
           isCapturing={isCapturing}
           onToggle={handleToggle}
+          onEndSession={handleEndSession}
         />
       </div>
     </div>
