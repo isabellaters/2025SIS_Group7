@@ -25,6 +25,7 @@ import LectureDetails from './components/LectureDetails';
 import NewRecording from './components/NewRecording';
 import { LiveSessionPage } from './components/LiveSessionPage';
 import { NewMeetingPage } from "./components/NewMeetingPage";
+import { ReviewPage } from './components/ReviewPage';
 
 // Dashboard screen types
 type Screen =
@@ -76,6 +77,11 @@ export default function App() {
   // If route is /live, always show LiveSessionPage
   if (route === "/live") {
     return <LiveSessionPage />;
+  }
+
+  // If route is /review, show ReviewPage
+  if (route === "/review") {
+    return <ReviewPage />;
   }
 
   // Otherwise, dashboard/homepage flow
