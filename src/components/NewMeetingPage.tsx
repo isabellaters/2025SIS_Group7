@@ -4,14 +4,17 @@ import { hasWindow, isElectron } from '../utils/environment';
 
 interface NewMeetingPageProps {
   onStart?: () => void;
+  onClose?: () => void; 
 }
 
-export function NewMeetingPage({ onStart }: NewMeetingPageProps) {
+export function NewMeetingPage({ onStart, onClose }: NewMeetingPageProps) {
   const [lectureTitle, setLectureTitle] = useState<string>("");
   const [subjects, setSubjects] = useState<string[]>(["No Subject", "COMP123 – Algorithms", "FEIT Orientation", "ENG Entrepreneurship"]);
   const [subject, setSubject] = useState<string>("No Subject");
   const [isDocked, setIsDocked] = useState<boolean>(true);
   const [justSaved, setJustSaved] = useState<boolean>(false);
+
+
 
   // load (client-only)
   useEffect(() => {
@@ -68,66 +71,189 @@ export function NewMeetingPage({ onStart }: NewMeetingPageProps) {
       : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-white p-6";
 
   return (
-    <div className={containerClasses}>
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 cursor-default">
-        <div className="flex items-center gap-1.5" />
-        <div className="text-sm text-neutral-600 select-none">LiveLecture – New Meeting</div>
-        <div className="flex items-center gap-2">
-          {justSaved ? (
-            <span className="text-xs text-emerald-600">Saved</span>
-          ) : (
-            <span className="text-xs text-neutral-400">Auto‑saving…</span>
-          )}
-        </div>
-      </div>
+    <div
+    style={{
+      background: "#fff",
+      borderRadius: 16,
+      padding: 32,
+      minWidth: 500,
+      maxWidth: "90vw",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+      position: "relative",
+    }}
+  >
+    {/* Close button (X) */}
+    <button
+      onClick={onClose}
+      style={{
+        position: "absolute",
+        top: 16,
+        right: 16,
+        background: "transparent",
+        border: "none",
+        fontSize: 24,
+        color: "#999",
+        cursor: "pointer",
+        width: 32,
+        height: 32,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 6,
+      }}
+      onMouseOver={e => {
+        e.currentTarget.style.background = "#f0f0f0";
+        e.currentTarget.style.color = "#333";
+      }}
+      onMouseOut={e => {
+        e.currentTarget.style.background = "transparent";
+        e.currentTarget.style.color = "#999";
+      }}
+      title="Close"
+    >
+      ×
+    </button>
 
-      {/* Form */}
-      <div className="mt-3 grid grid-cols-1 gap-3">
-        <label className="text-xs font-medium text-neutral-700">Lecture Title (Optional)</label>
-        <input
-          type="text"
-          placeholder="Enter Lecture Title..."
-          value={lectureTitle}
-          onChange={(e) => setLectureTitle(e.target.value)}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-sky-400"
-        />
-        <div className="mt-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-neutral-700">Subject/Course (Optional)</label>
-            <button onClick={addNewSubject} className="ml-2 inline-flex items-center gap-1 rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-50">+ New</button>
-          </div>
-          <select
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className="mt-1 w-full rounded-md border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
-          >
-            {subjects.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Start */}
-      <div className="mt-4 flex justify-end gap-2">
-        <button
-          onClick={() => setIsDocked((v) => !v)}
-          className="rounded-md border border-neutral-300 px-3 py-2 text-xs hover:bg-neutral-50"
-        >
-          {isDocked ? "Undock" : "Dock"}
-        </button>
-        <button
-          onClick={() => {
-            lsSet("ll:newMeeting", JSON.stringify({ lectureTitle, subjects, subject, isDocked }));
-            if (typeof onStart === "function") { onStart(); return; }
-            if (hasWindow) { window.location.hash = "#/live"; }
-          }}
-          className="rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
-        >
-          Start
-        </button>
+    {/* Header */}
+    <div style={{ marginBottom: 24 }}>
+      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
+        New Meeting
+      </h2>
+      <div style={{ fontSize: "0.85rem", color: "#999" }}>
+        {justSaved ? (
+          <span style={{ color: "#10b981" }}>✓ Saved</span>
+        ) : (
+          <span>Auto-saving...</span>
+        )}
       </div>
     </div>
+
+    {/* Form */}
+    <div style={{ marginBottom: 20 }}>
+      <label style={{ display: "block", marginBottom: 8, fontWeight: 500, fontSize: "0.95rem" }}>
+        Lecture Title (Optional)
+      </label>
+      <input
+        value={lectureTitle}
+        onChange={e => setLectureTitle(e.target.value)}
+        placeholder="Enter lecture title"
+        style={{
+          width: "100%",
+          padding: "10px 12px",
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          fontSize: "0.95rem",
+          outline: "none",
+        }}
+        onFocus={e => (e.currentTarget.style.borderColor = "#2563eb")}
+        onBlur={e => (e.currentTarget.style.borderColor = "#ddd")}
+      />
+    </div>
+
+    <div style={{ marginBottom: 24 }}>
+      <label style={{ display: "block", marginBottom: 8, fontWeight: 500, fontSize: "0.95rem" }}>
+        Subject/Course (Optional)
+        <button
+          type="button"
+          onClick={addNewSubject}
+          style={{
+            marginLeft: 8,
+            padding: "4px 10px",
+            fontSize: "0.8rem",
+            background: "#e0f2fe",
+            color: "#0369a1",
+            border: "1px solid #0369a1",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          + New
+        </button>
+      </label>
+      <select
+        value={subject}
+        onChange={e => setSubject(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "10px 12px",
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          fontSize: "0.95rem",
+          background: "#f9f9f9",
+          cursor: "pointer",
+          outline: "none",
+        }}
+      >
+        {subjects.map(s => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    {/* Actions */}
+    <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+      <button
+        onClick={onClose}
+        style={{
+          padding: "10px 20px",
+          background: "#f5f5f5",
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          fontSize: "0.95rem",
+          fontWeight: 500,
+          cursor: "pointer",
+          transition: "all 0.15s",
+        }}
+        onMouseOver={e => (e.currentTarget.style.background = "#e5e5e5")}
+        onMouseOut={e => (e.currentTarget.style.background = "#f5f5f5")}
+      >
+        Cancel
+      </button>
+      <button
+        onClick={() => {
+          lsSet("ll:newMeeting", JSON.stringify({ lectureTitle, subjects, subject, isDocked }));
+          if (typeof onStart === "function") {
+            onStart();
+            return;
+          }
+          if (hasWindow) {
+            window.location.hash = "live";
+          }
+        }}
+        style={{
+          padding: "10px 24px",
+          background: "#2563eb",
+          color: "#fff",
+          border: "none",
+          borderRadius: 8,
+          fontSize: "0.95rem",
+          fontWeight: 600,
+          cursor: "pointer",
+          transition: "all 0.15s",
+        }}
+        onMouseOver={e => (e.currentTarget.style.background = "#1d4ed8")}
+        onMouseOut={e => (e.currentTarget.style.background = "#2563eb")}
+      >
+        Start Meeting
+      </button>
+    </div>
+  </div>
+
   );
 }
+
+/**
+ <button
+  onClick={() => {
+    lsSet("ll:newMeeting", JSON.stringify({ lectureTitle, subjects, subject, isDocked }));
+    if (typeof onStart === "function") onStart();
+    if (hasWindow) window.location.hash = "live"; // <-- this updates hash!
+  }}
+  className="rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
+>
+  Start
+</button>
+
+ */
