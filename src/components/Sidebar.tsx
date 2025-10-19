@@ -4,9 +4,10 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onNewRecording?: () => void;
+  onVideoUpload?: () => void;
 }
 
-export default function Sidebar({ collapsed, onToggle, onNewRecording }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onNewRecording, onVideoUpload }: SidebarProps) {
 
 
 
@@ -115,6 +116,27 @@ export default function Sidebar({ collapsed, onToggle, onNewRecording }: Sidebar
         }}
       >
         {!collapsed && 'New Recording'}
+      </button>
+      {/* Video Upload Button */}
+      <button
+        onClick={onVideoUpload}
+        style={{
+          width: collapsed ? 48 : '88%',
+          background: '#f7f7f7',
+          color: '#222',
+          border: 'none',
+          borderRadius: 12,
+          fontWeight: 500,
+          padding: collapsed ? '10px' : '14px',
+          fontSize: '1rem',
+          marginBottom: 12,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {!collapsed && 'Upload Video'}
       </button>
       {/* Import File Button */}
       <button

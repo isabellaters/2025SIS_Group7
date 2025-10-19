@@ -26,6 +26,7 @@ import NewRecording from './components/NewRecording';
 import { LiveSessionPage } from './components/LiveSessionPage';
 import { NewMeetingPage } from "./components/NewMeetingPage";
 import { ReviewPage } from './components/ReviewPage';
+import { VideoUploadPage } from './components/VideoUploadPage';
 
 // Dashboard screen types
 type Screen =
@@ -39,7 +40,8 @@ export default function App() {
   const [route, navigate] = useHashRouter(); // hash routing for LiveSessionPage
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showRecordingModal, setShowRecordingModal] = useState(false);
-  const [showNewMeetingModal, setShowNewMeetingModal] = useState(false); 
+  const [showNewMeetingModal, setShowNewMeetingModal] = useState(false);
+  const [showVideoUploadModal, setShowVideoUploadModal] = useState(false); 
   const [currentScreen, setCurrentScreen] = useState<Screen>({ type: 'dashboard' });
   
   // dashboard navigation handlers
@@ -72,6 +74,12 @@ export default function App() {
   }
   function closeNewMeetingModal() {
     setShowNewMeetingModal(false); 
+  }
+  function openVideoUploadModal() {
+    setShowVideoUploadModal(true);
+  }
+  function closeVideoUploadModal() {
+    setShowVideoUploadModal(false);
   }
 
   // If route is /live, always show LiveSessionPage
@@ -122,7 +130,8 @@ export default function App() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(x => !x)}
-        onNewRecording={openNewMeetingModal} 
+        onNewRecording={openNewMeetingModal}
+        onVideoUpload={openVideoUploadModal}
       />
       {renderScreen()}
       
@@ -154,6 +163,26 @@ export default function App() {
             onClose={closeNewMeetingModal}
             onStart={() => {
               closeNewMeetingModal();
+              navigate("/live");
+            }}
+          />
+        </div>
+      )}
+
+      {/* Video Upload Modal */}
+      {showVideoUploadModal && (
+        <div
+          className="modal-overlay"
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              closeVideoUploadModal();
+            }
+          }}
+        >
+          <VideoUploadPage 
+            onClose={closeVideoUploadModal}
+            onStart={() => {
+              closeVideoUploadModal();
               navigate("/live");
             }}
           />

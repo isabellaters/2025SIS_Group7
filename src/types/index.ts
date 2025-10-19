@@ -1,4 +1,10 @@
-import { Timestamp } from "firebase/firestore";
+// import { Timestamp } from "firebase/firestore";
+
+// Temporary type definition for Timestamp
+interface Timestamp {
+  seconds: number;
+  nanoseconds: number;
+}
 
 // ========== Database Models ==========
 export interface Transcript {

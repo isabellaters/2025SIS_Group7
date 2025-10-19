@@ -3,10 +3,14 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { error } from 'console';
+import multer from 'multer';
+import * as path from 'path';
+import * as fs from 'fs';
 import { processLectureData } from './services/gemini';
 import { LectureService } from './services/lecture';
-import { SpeechToTextService } from './services/speech-to-text';
+import { SpeechToTextService } from './services/speech-to-text-mock';
 import { TranslationService } from './services/translation';
+import { VideoTranscriptionService } from './services/video-transcription-mock';
 
 const app = express();
 const httpServer = createServer(app);
@@ -20,6 +24,38 @@ const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype === 'video/mp4') {
+        cb(null, true);
+      } else {
+        cb(new Error('Only MP4 video files are allowed') as any, false);
+      }
+    },
+  limits: {
+    fileSize: 100 * 1024 * 1024 // 100MB limit
+  }
+});
+
+// Store for tracking video processing status
+const videoProcessingStatus = new Map<string, { status: string; transcript?: string; error?: string }>();
 
 
 // AI Summary Generation
@@ -288,4 +324,112 @@ app.post("/api/lectures/save", async (req, res) => {
     console.error('Error saving lecture:', err);
     res.status(500).json({ error: "Failed to save lecture" });
   }
+});
+
+// Video Upload and Transcription Endpoints
+app.post('/api/video/upload', upload.single('video'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file uploaded' });
+    }
+
+    const { title, subject } = req.body;
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    const videoId = req.file.filename;
+    const videoPath = req.file.path;
+
+    // Initialize processing status
+    videoProcessingStatus.set(videoId, { status: 'processing' });
+
+    // Process video asynchronously
+    VideoTranscriptionService.transcribeVideo(videoPath)
+      .then(async (result) => {
+        if (result.status === 'completed') {
+          videoProcessingStatus.set(videoId, { 
+            status: 'completed', 
+            transcript: result.transcript 
+          });
+
+          // Save the lecture with transcript
+          try {
+            const transcriptData = {
+              text: result.transcript,
+              status: 'completed' as const
+            };
+
+            const transcriptId = await LectureService.createTranscript(transcriptData);
+            const lectureId = await LectureService.createLecture({
+              title,
+              transcriptId,
+              status: 'completed'
+            });
+
+            console.log(`Video transcription completed for ${videoId}. Lecture ID: ${lectureId}`);
+          } catch (saveError) {
+            console.error('Error saving lecture:', saveError);
+          }
+        } else {
+          videoProcessingStatus.set(videoId, { 
+            status: 'failed', 
+            error: result.error || 'Transcription failed' 
+          });
+        }
+
+        // Clean up video file after processing
+        try {
+          await fs.promises.unlink(videoPath);
+          console.log(`Cleaned up video file: ${videoPath}`);
+        } catch (cleanupError) {
+          console.error('Error cleaning up video file:', cleanupError);
+        }
+      })
+      .catch((error) => {
+        console.error('Error processing video:', error);
+        videoProcessingStatus.set(videoId, { 
+          status: 'failed', 
+          error: error.message || 'Unknown error' 
+        });
+      });
+
+    res.json({ 
+      success: true, 
+      videoId,
+      message: 'Video uploaded successfully. Processing started.' 
+    });
+
+  } catch (error) {
+    console.error('Error uploading video:', error);
+    res.status(500).json({ error: 'Failed to upload video' });
+  }
+});
+
+// Check video processing status
+app.get('/api/video/status/:videoId', (req, res) => {
+  const { videoId } = req.params;
+  const status = videoProcessingStatus.get(videoId);
+
+  if (!status) {
+    return res.status(404).json({ error: 'Video not found' });
+  }
+
+  res.json(status);
+});
+
+// Get video transcript
+app.get('/api/video/transcript/:videoId', (req, res) => {
+  const { videoId } = req.params;
+  const status = videoProcessingStatus.get(videoId);
+
+  if (!status) {
+    return res.status(404).json({ error: 'Video not found' });
+  }
+
+  if (status.status !== 'completed') {
+    return res.status(400).json({ error: 'Video processing not completed' });
+  }
+
+  res.json({ transcript: status.transcript });
 });
