@@ -1,9 +1,13 @@
 /* src/styles.css */
 @import "tailwindcss";
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* optional base tweaks */
 @layer base {
   html, body, #root { height: 100%; }
 }
 
-html, body { background: transparent; }
+/* keep this minimal — theme.css will set the app background / variables */

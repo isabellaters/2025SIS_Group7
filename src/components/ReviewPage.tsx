@@ -1,46 +1,25 @@
 import React, { useEffect, useState } from "react";
+import { LectureService } from "../apis/lecture";
+import { API_BASE_URL } from "../apis/config";
 
 /** LocalStorage keys (shared with the rest of the app) */
 const SESSION_KEY = "ll:session"; // { title, transcriptLines, translationLines, updatedAt }
-const DEFS_KEY = "ll:defs";       // { [term: string]: definition }
 
 /** Small helpers (self-contained) */
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-function extractKeyTerms(text: string, maxTerms = 8): string[] {
-  const terms: string[] = [];
-  const set = new Set<string>();
 
-  // Capitalized multi-word phrases
-  const phraseRe = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/g;
-  let m: RegExpExecArray | null;
-  while ((m = phraseRe.exec(text)) !== null) {
-    const t = m[1].trim();
-    if (!set.has(t)) { set.add(t); terms.push(t); }
-  }
-
-  // Word frequency (exclude common stopwords)
-  const STOP = new Set(["the","and","to","of","in","a","is","that","for","on","with","it","as","this","are","be","we","you","your","our","an","at","by","from","or","so","can"]);
-  const counts: Record<string, number> = {};
-  for (const w of text.toLowerCase().match(/[a-z][a-z\-]{3,}/g) || []) {
-    if (STOP.has(w)) continue;
-    counts[w] = (counts[w] || 0) + 1;
-  }
-  const topWords = Object.entries(counts)
-    .filter(([, c]) => c >= 2)
-    .sort((a, b) => b[1] - a[1])
-    .map(([w]) => w);
-
-  for (const w of topWords) {
-    const t = w.replace(/\b\w/g, (l) => l.toUpperCase());
-    if (!set.has(t)) { set.add(t); terms.push(t); }
-  }
-  return terms.slice(0, maxTerms);
-}
 function timeOf(index: number, stepSec = 5): string {
   const s = index * stepSec; const m = Math.floor(s / 60); const ss = (s % 60).toString().padStart(2, "0");
   return `${m}:${ss}`;
+}
+
+interface AIGeneratedContent {
+  summary: string;
+  keywords: string[];
+  keyPoints: string[];
+  questions: string[];
 }
 
 export function ReviewPage() {
@@ -48,31 +27,147 @@ export function ReviewPage() {
   const [selectedTerm, setSelectedTerm] = useState<string>("");
   const [defs, setDefs] = useState<Record<string, string>>({});
   const [fontScale, setFontScale] = useState<number>(1);
+  const [aiContent, setAiContent] = useState<AIGeneratedContent | null>(null);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveStatus, setSaveStatus] = useState<string>("");
+  const [isLoadingDef, setIsLoadingDef] = useState<boolean>(false);
 
   useEffect(() => {
     try {
       const s = localStorage.getItem(SESSION_KEY);
-      if (s) setSession(JSON.parse(s));
-    } catch {}
-    try {
-      const d = localStorage.getItem(DEFS_KEY);
-      const parsed = d ? JSON.parse(d) : {};
-      if (!parsed["Vibe Coding"]) {
-        parsed["Vibe Coding"] =
-          "A software development approach that uses natural language prompts to have an AI assistant generate, refine, and debug code, shifting the developer's role from manual coding to guiding the AI.";
+      if (s) {
+        const sessionData = JSON.parse(s);
+        setSession(sessionData);
+
+        // Automatically generate AI content when session loads
+        if (sessionData.transcriptLines && sessionData.transcriptLines.length > 0) {
+          generateAIContent(sessionData.transcriptLines.join("\n"));
+        }
       }
-      setDefs(parsed);
-    } catch {}
+    } catch (e) {
+      console.error("Error loading session:", e);
+    }
   }, []);
 
-  const fullText = (session?.transcriptLines || []).join("\n");
-  const keyTerms = extractKeyTerms(fullText);
-  const summaryPoints = (session?.transcriptLines || []).filter((l) => l.trim().length > 0).slice(0, 3);
+  // Helper function to check if AI response is valid data vs error message
+  function isValidAIData(data: any): boolean {
+    // Check if keywords is an array with actual terms (not error messages)
+    if (!Array.isArray(data.keywords)) return false;
 
-  function saveDef(term: string, def: string) {
-    const next = { ...defs, [term]: def };
-    setDefs(next);
-    try { localStorage.setItem(DEFS_KEY, JSON.stringify(next)); } catch {}
+    // Check if keywords contains response-like text instead of actual terms
+    const invalidPhrases = [
+      'sorry', 'cannot', 'unable', 'error', 'transcript is too short',
+      'need more', 'insufficient', 'please provide', 'i apologize'
+    ];
+
+    const allText = [
+      data.summary || '',
+      ...(data.keywords || []),
+      ...(data.keyPoints || []),
+      ...(data.questions || [])
+    ].join(' ').toLowerCase();
+
+    // If the response contains common error phrases, it's invalid
+    if (invalidPhrases.some(phrase => allText.includes(phrase))) {
+      return false;
+    }
+
+    // Check if we have at least some valid content
+    const hasContent = data.keywords.length > 0 ||
+                      data.keyPoints.length > 0 ||
+                      data.questions.length > 0;
+
+    return hasContent;
+  }
+
+  async function generateAIContent(transcript: string) {
+    // Check if transcript is too short
+    if (transcript.length < 100) {
+      console.log("Transcript too short for AI generation");
+      setAiContent({
+        summary: "",
+        keywords: [],
+        keyPoints: [],
+        questions: []
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/summary`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate AI content");
+      }
+
+      const data = await response.json();
+
+      // Validate that we got actual data, not error messages
+      if (!isValidAIData(data)) {
+        console.log("AI returned invalid or insufficient data");
+        setAiContent({
+          summary: "",
+          keywords: [],
+          keyPoints: [],
+          questions: []
+        });
+        return;
+      }
+
+      setAiContent({
+        summary: data.summary || "",
+        keywords: data.keywords || [],
+        keyPoints: data.keyPoints || [],
+        questions: data.questions || []
+      });
+    } catch (error) {
+      console.error("Error generating AI content:", error);
+      setAiContent({
+        summary: "",
+        keywords: [],
+        keyPoints: [],
+        questions: []
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  }
+
+  async function generateDefinition(term: string) {
+    if (!session) return;
+
+    setIsLoadingDef(true);
+    try {
+      const context = session.transcriptLines.join("\n");
+      const response = await fetch(`${API_BASE_URL}/definition`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ term, context }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate definition");
+      }
+
+      const data = await response.json();
+      const definition = data.definition || "";
+
+      // Save definition
+      const next = { ...defs, [term]: definition };
+      setDefs(next);
+    } catch (error) {
+      console.error("Error generating definition:", error);
+      const next = { ...defs, [term]: "Failed to generate definition. Please try again." };
+      setDefs(next);
+    } finally {
+      setIsLoadingDef(false);
+    }
   }
 
   function highlight(text: string, term: string): React.ReactNode {
@@ -90,20 +185,64 @@ export function ReviewPage() {
     return <>{out}</>;
   }
 
-// Save current session snapshot and navigate to Dashboard
-function handleSaveAndExit() {
-    try {
-     if (session) {
-             const toSave = { ...session, updatedAt: new Date().toISOString() };
-             localStorage.setItem(SESSION_KEY, JSON.stringify(toSave));
-      }
-    // optional quick reference
-    localStorage.setItem("ll:lastReview", JSON.stringify({ title: session?.title || "Untitled", savedAt: new Date().toISOString() }));
-    } catch (e) {
-     console.error("Failed to save session", e);
+  // Save current session snapshot to localStorage and Firebase, then navigate to Dashboard
+  async function handleSaveAndExit() {
+    if (!session || !aiContent) {
+      window.location.hash = "#/dashboard";
+      return;
     }
-    window.location.hash = "#/dashboard";
+
+    setIsSaving(true);
+    setSaveStatus("Saving...");
+
+    try {
+      // Save to localStorage first
+      const toSave = { ...session, updatedAt: new Date().toISOString() };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(toSave));
+      localStorage.setItem("ll:lastReview", JSON.stringify({
+        title: session?.title || "Untitled",
+        savedAt: new Date().toISOString()
+      }));
+
+      // Save to Firebase
+      const transcriptText = session.transcriptLines.join("\n");
+      const translationText = session.translationLines.join("\n");
+
+      // First create the transcript
+      const transcriptId = await LectureService.createTranscript({
+        text: transcriptText,
+        translation: translationText || undefined,
+        translationLanguage: translationText ? "auto" : undefined,
+        status: "completed",
+      });
+
+      // Prepare keywords from AI-generated keywords and their definitions
+      const keywordsWithDefs = aiContent.keywords
+        .filter(term => defs[term])
+        .map(term => `${term}: ${defs[term]}`);
+
+      // Create the lecture with all AI-generated review data
+      await LectureService.createLecture({
+        title: session.title,
+        transcriptId: transcriptId,
+        summary: aiContent.summary || undefined,
+        keywords: keywordsWithDefs.length > 0 ? keywordsWithDefs : aiContent.keywords,
+        questions: aiContent.questions.length > 0 ? aiContent.questions : undefined,
+        status: "completed",
+      });
+
+      setSaveStatus("Saved successfully!");
+      setTimeout(() => {
+        window.location.hash = "#/dashboard";
+      }, 1000);
+    } catch (e) {
+      console.error("Failed to save session", e);
+      setSaveStatus("Save failed. Please try again.");
+      setIsSaving(false);
+    }
   }
+
+  const keyTerms = aiContent?.keywords || [];
 
   return (
     <div id="ll-container" data-page="review" className="mx-auto my-4 max-w-6xl px-3">
@@ -112,86 +251,152 @@ function handleSaveAndExit() {
         <div className="col-span-8">
           <h2 className="text-lg font-semibold mb-2">{session?.title || "Lecture Review"}</h2>
           <div className="rounded-xl border border-neutral-300 bg-white p-3 shadow-sm min-h-[300px] max-h-[70vh] overflow-auto">
-            {(session?.transcriptLines || []).map((line, idx) => (
-              <div
-                key={idx}
-                className="mb-3 text-[clamp(12px,calc(14px_*_var(--fs,1)),20px)] leading-relaxed"
-                style={{ ["--fs" as any]: fontScale }}
-              >
-                <div className="text-neutral-400 text-xs mb-1">{timeOf(idx)}</div>
-                <div className="cursor-text" onDoubleClick={() => setSelectedTerm("")}>
-                  {highlight(line, selectedTerm)}
-                </div>
+            {(session?.transcriptLines || []).length === 0 ? (
+              <div className="flex items-center justify-center h-full text-neutral-500">
+                <div className="text-sm">No transcript available.</div>
               </div>
-            ))}
+            ) : (
+              (session?.transcriptLines || []).map((line, idx) => (
+                <div
+                  key={idx}
+                  className="mb-3 text-[clamp(12px,calc(14px_*_var(--fs,1)),20px)] leading-relaxed"
+                  style={{ ["--fs" as any]: fontScale }}
+                >
+                  <div className="text-neutral-400 text-xs mb-1">{timeOf(idx)}</div>
+                  <div className="cursor-text" onDoubleClick={() => setSelectedTerm("")}>
+                    {highlight(line, selectedTerm)}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
           <div className="mt-2 flex items-center gap-3">
             <button className="rounded border px-2 py-1 text-sm" onClick={() => setFontScale((s) => Math.min(1.4, +(s + 0.1).toFixed(2)))}>A+</button>
             <button className="rounded border px-2 py-1 text-sm" onClick={() => setFontScale((s) => Math.max(0.8, +(s - 0.1).toFixed(2)))}>A-</button>
             <div className="text-sm text-neutral-500">Double-click text to clear highlight</div>
           </div>
+
+          {/* Action buttons */}
+          <div className="mt-4 flex justify-between items-center">
+            <button onClick={() => { window.location.hash = "#/live"; }} className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50">
+              Back to Live
+            </button>
+            <div className="flex gap-2 items-center">
+              {saveStatus && (
+                <div className={`text-sm ${saveStatus.includes('failed') ? 'text-red-600' : saveStatus.includes('success') ? 'text-green-600' : 'text-neutral-600'}`}>
+                  {saveStatus}
+                </div>
+              )}
+              <button
+                onClick={async () => {
+                  // Save current data before starting new meeting
+                  if (session && aiContent) {
+                    await handleSaveAndExit();
+                  } else {
+                    window.location.hash = "#/";
+                  }
+                }}
+                className="rounded-md bg-sky-500 text-white px-4 py-2 text-sm hover:bg-sky-600"
+              >
+                New Meeting
+              </button>
+              <button
+                onClick={handleSaveAndExit}
+                disabled={isSaving || isGenerating}
+                className={`rounded-md bg-sky-600 text-white px-3 py-2 text-sm hover:bg-sky-700 ${(isSaving || isGenerating) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="Save this review and go to Dashboard"
+              >
+                {isSaving ? "Saving..." : "Save & Exit"}
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Right column: definitions + key points */}
+        {/* Right column: AI-generated content */}
         <div className="col-span-4">
-          {/* Term selector */}
+          {/* Summary */}
+          <div className="rounded-xl border border-neutral-300 bg-white p-3 mb-3">
+            <div className="text-sm font-semibold mb-2">Summary</div>
+            {isGenerating ? (
+              <div className="text-sm text-neutral-500">Generating summary...</div>
+            ) : (
+              <div className="text-sm text-neutral-700 leading-relaxed">
+                {aiContent?.summary || "No summary available."}
+              </div>
+            )}
+          </div>
+
+          {/* Key Terms */}
           <div className="mb-3">
             <label className="text-sm font-medium text-neutral-700">Key Terms</label>
             <div className="mt-1 flex flex-wrap gap-2">
-              {keyTerms.length === 0 && <span className="text-neutral-400 text-sm">No terms detected.</span>}
-              {keyTerms.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setSelectedTerm(t)}
-                  className={`px-2 py-1 rounded-md border text-sm ${selectedTerm === t ? "border-sky-500 bg-sky-50 text-sky-700" : "border-neutral-300 hover:bg-neutral-50"}`}
-                >
-                  {t}
-                </button>
-              ))}
+              {isGenerating ? (
+                <span className="text-neutral-400 text-sm">Extracting key terms...</span>
+              ) : keyTerms.length === 0 ? (
+                <span className="text-neutral-400 text-sm">No terms detected.</span>
+              ) : (
+                keyTerms.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setSelectedTerm(t);
+                      if (!defs[t]) {
+                        generateDefinition(t);
+                      }
+                    }}
+                    className={`px-2 py-1 rounded-md border text-sm ${selectedTerm === t ? "border-sky-500 bg-sky-50 text-sky-700" : "border-neutral-300 hover:bg-neutral-50"}`}
+                  >
+                    {t}
+                  </button>
+                ))
+              )}
             </div>
           </div>
 
           {/* Definition card */}
-          <div className="rounded-xl border border-sky-300 bg-sky-50/40 p-3 mb-4">
+          <div className="rounded-xl border border-neutral-300 bg-white p-3 mb-3">
             <div className="text-sm font-medium mb-1">Definition</div>
             {selectedTerm ? (
               <>
                 <div className="mb-2"><span className="font-semibold">{selectedTerm}</span></div>
-                <textarea
-                  className="w-full rounded-md border border-neutral-300 p-2 text-sm min-h-[100px]"
-                  value={defs[selectedTerm] || ""}
-                  placeholder="Type or paste a definition here…"
-                  onChange={(e) => saveDef(selectedTerm, e.target.value)}
-                />
+                {isLoadingDef ? (
+                  <div className="text-sm text-neutral-500">Generating definition...</div>
+                ) : (
+                  <div className="text-sm text-neutral-700 leading-relaxed">
+                    {defs[selectedTerm] || "Click a term above to generate its definition."}
+                  </div>
+                )}
               </>
             ) : (
-              <div className="text-sm text-neutral-500">Select a key term to see or edit its definition.</div>
+              <div className="text-sm text-neutral-500">Select a key term to see its AI-generated definition.</div>
             )}
           </div>
 
           {/* Key Points */}
-          <div className="rounded-xl border border-neutral-300 bg-white p-3">
+          <div className="rounded-xl border border-neutral-300 bg-white p-3 mb-3">
             <div className="text-sm font-semibold mb-2">Key Points</div>
-            <ul className="list-disc ml-5 text-sm">
-              {(summaryPoints.length === 0) && <li className="text-neutral-500">No content captured yet.</li>}
-              {summaryPoints.map((p, i) => (<li key={i}>{p}</li>))}
-            </ul>
+            {isGenerating ? (
+              <div className="text-sm text-neutral-500">Generating key points...</div>
+            ) : (
+              <ul className="list-disc ml-5 text-sm space-y-1">
+                {(aiContent?.keyPoints.length === 0) && <li className="text-neutral-500">No key points generated.</li>}
+                {aiContent?.keyPoints.map((p, i) => (<li key={i}>{p}</li>))}
+              </ul>
+            )}
           </div>
-        </div>
-      </div>
 
-     {/* Footer nav */}
-      <div className="mt-4 flex justify-between">
-        <button onClick={() => { window.location.hash = "#/live"; }} className="rounded-md border px-3 py-2 text-sm">Back to Live</button>
-        <div className="flex gap-2">
-          <button onClick={() => { window.location.hash = "#/"; }} className="rounded-md bg-sky-500 text-white px-4 py-2 text-sm">New Meeting</button>
-          <button
-            onClick={handleSaveAndExit}
-            className="rounded-md bg-sky-600 text-white px-3 py-2 text-sm hover:bg-sky-700"
-            title="Save this review and go to Dashboard"
-          >
-            Save & Exit
-          </button>
+          {/* Review Questions */}
+          <div className="rounded-xl border border-neutral-300 bg-white p-3">
+            <div className="text-sm font-semibold mb-2">Review Questions</div>
+            {isGenerating ? (
+              <div className="text-sm text-neutral-500">Generating questions...</div>
+            ) : (
+              <ol className="list-decimal ml-5 text-sm space-y-2">
+                {(aiContent?.questions.length === 0) && <li className="text-neutral-500">No questions generated.</li>}
+                {aiContent?.questions.map((q, i) => (<li key={i}>{q}</li>))}
+              </ol>
+            )}
+          </div>
         </div>
       </div>
     </div>

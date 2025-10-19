@@ -1,0 +1,93 @@
+:root{
+  --brand-50: #f2fbff;
+  --brand-100: #e6f7ff;
+  --brand-200: #cfeefe;
+  --brand-300: #9adff6;
+  --brand-400: #64c7f0;
+  --brand-500: #349beb;
+  --brand-600: #2a87c9;
+  --brand-700: #206aa6;
+  --brand-800: #194f80;
+  --brand-900: #123659;
+
+  --brand-contrast: #ffffff;
+  /* Use a light brand tint for the app background */
+  --app-bg: var(--brand-50);
+}
+
+/* Base page look and accessibility */
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    background-color: var(--app-bg);
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :focus {
+    outline: 3px solid rgba(52,155,235,0.20);
+    outline-offset: 2px;
+  }
+}
+
+/* Component helpers using CSS variables (avoids @apply -> unknown utility errors) */
+@layer components {
+  .btn-brand {
+    background-color: var(--brand-500);
+    color: var(--brand-contrast);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-brand:hover {
+    background-color: var(--brand-600);
+  }
+  .btn-brand:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .btn-brand-outline {
+    background-color: #fff;
+    color: var(--brand-700);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    border: 1px solid var(--brand-500);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+  .btn-brand-outline:hover {
+    background-color: var(--brand-50);
+  }
+
+  .card-brand {
+    border-radius: 1rem;
+    border: 1px solid var(--brand-300);
+    background-color: var(--brand-50);
+    padding: 1rem;
+    box-shadow: 0 1px 2px rgba(2,6,23,0.04), 0 4px 8px rgba(2,6,23,0.04);
+  }
+
+  .chip-brand {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--brand-300);
+    font-size: 0.875rem;
+    color: var(--brand-700);
+    background-color: var(--brand-50);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+}

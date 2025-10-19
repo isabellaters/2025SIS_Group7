@@ -13,10 +13,27 @@ interface LiveSessionPageProps {
   controller?: TranscriptController;
 }
 
+const SAMPLE_TRANSCRIPT = [
+  "Welcome to Introduction to Computer Science. Today we'll be discussing fundamental programming concepts and data structures.",
+  "Let's start with Variables. A variable is a named storage location in memory that holds a value. In most programming languages, you need to declare a variable before using it.",
+  "Next, we have Data Structures. These are specialized formats for organizing, processing, and storing data. Common examples include arrays, linked lists, stacks, and queues.",
+  "An Algorithm is a step-by-step procedure for solving a problem or accomplishing a task. Good algorithms are efficient and solve problems correctly.",
+  "Object-Oriented Programming, or OOP, is a programming paradigm based on the concept of objects, which contain data in the form of fields and code in the form of methods.",
+  "Recursion is a programming technique where a function calls itself to solve a problem by breaking it down into smaller, similar sub-problems.",
+  "Time Complexity measures how the runtime of an algorithm grows as the input size increases. We use Big O Notation to express this mathematically.",
+  "Space Complexity refers to the amount of memory an algorithm uses relative to the input size. It's important to balance time and space efficiency.",
+  "A Hash Table is a data structure that implements an associative array, mapping keys to values for highly efficient lookup operations.",
+  "Binary Search is an efficient algorithm for finding an item in a sorted list by repeatedly dividing the search interval in half.",
+  "The Stack is a Last-In-First-Out (LIFO) data structure where elements are added and removed from the same end, called the top.",
+  "Conversely, a Queue is a First-In-First-Out (FIFO) data structure where elements are added at one end and removed from the other.",
+  "In conclusion, understanding these fundamental concepts is crucial for becoming a proficient programmer. Practice implementing these data structures and algorithms to solidify your understanding."
+];
+
 export function LiveSessionPage({ controller }: LiveSessionPageProps) {
   const [isDocked, setIsDocked] = React.useState<boolean>(true);
   const [activeTab, setActiveTab] = React.useState<"Transcription" | "Translation">("Transcription");
   const [title, setTitle] = React.useState<string>("Untitled Session");
+  const [displayTranscript, setDisplayTranscript] = React.useState<string[]>(SAMPLE_TRANSCRIPT);
 
   // Use audio capture hook for all audio/transcription functionality
   const {
@@ -33,6 +50,25 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     startCapture,
     stopCapture,
   } = useAudioCapture();
+
+  // Update display transcript when real transcription starts
+  // Clear sample data and use real transcription
+  React.useEffect(() => {
+    if (transcriptLines.length > 0) {
+      setDisplayTranscript(transcriptLines);
+    }
+  }, [transcriptLines]);
+
+  // Clear sample transcript when recording starts
+  React.useEffect(() => {
+    if (isCapturing) {
+      // Only clear if we're still showing sample data
+      // Don't clear if we already have real transcription
+      if (transcriptLines.length === 0) {
+        setDisplayTranscript([]);
+      }
+    }
+  }, [isCapturing, transcriptLines.length]);
 
   // pull title + dock saved by NewMeetingPage / UI prefs (client-only)
   useEffect(() => {
@@ -60,20 +96,35 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     }
   };
 
-  // End Session: stop if needed, then go to Review via hash (consistent with your app)
+  // End Session: stop if needed, save session data, then go to Review via hash
   const handleEndSession = async () => {
     if (isCapturing) {
       await stopCapture();
     }
+
+    // Save session data to localStorage for ReviewPage
+    // Use displayTranscript which contains either sample data or real captured data
+    const sessionData = {
+      title: title,
+      transcriptLines: displayTranscript.length > 0 ? displayTranscript : transcriptLines,
+      translationLines: translationLines,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      localStorage.setItem('ll:session', JSON.stringify(sessionData));
+      console.log("Session data saved:", sessionData);
+    } catch (error) {
+      console.error("Error saving session data:", error);
+    }
+
     console.log("Session ended — redirecting to Review Page");
     window.location.hash = '#/review';
   };
 
   const containerClasses = isElectron
-    ? "w-full h-full rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
-    : isDocked
-      ? "fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[min(1100px,90vw)] rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
-      : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-white p-6";
+    ? "w-full h-full rounded-2xl shadow-2xl border border-neutral-200 bg-brand-50/95 backdrop-blur p-4"
+    : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-brand-50 p-6";
 
   const translationText = translationLines.join("\n") +
     (interimTranslation ? `\n[${interimTranslation}]` : '');
@@ -85,7 +136,7 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     <div className={containerClasses}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 cursor-default">
-        <div className="flex-1 text-center text-sm font-medium text-neutral-700 truncate px-2" title={title}>
+        <div className="flex-1 text-sm font-medium text-neutral-700 truncate px-2" title={title}>
           {title}
         </div>
         <div className="flex items-center gap-2">
@@ -97,7 +148,7 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
             disabled={isCapturing}
           />
           <ExportButton
-            transcriptLines={transcriptLines}
+            transcriptLines={displayTranscript}
             translationLines={translationLines}
             title={title}
           />
@@ -134,9 +185,9 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
       <div className="mt-3">
         {activeTab === "Transcription" ? (
           <TranscriptDisplay
-            transcriptLines={transcriptLines}
+            transcriptLines={displayTranscript}
             interimTranscript={interimTranscript}
-            cursor={transcriptLines.length}
+            cursor={displayTranscript.length}
             isDocked={isDocked}
           />
         ) : (
