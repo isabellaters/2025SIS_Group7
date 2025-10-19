@@ -75,6 +75,20 @@ export function ReviewPage() {
     try { localStorage.setItem(DEFS_KEY, JSON.stringify(next)); } catch {}
   }
 
+  // Save current session snapshot and navigate to Dashboard
+  function handleSaveAndExit(): void {
+    try {
+      if (session) {
+        const toSave = { ...session, updatedAt: new Date().toISOString() };
+        localStorage.setItem(SESSION_KEY, JSON.stringify(toSave));
+        localStorage.setItem("ll:lastReview", JSON.stringify({ title: session.title || "Untitled", savedAt: toSave.updatedAt }));
+      }
+    } catch (e) {
+      console.error("Failed to save session", e);
+    }
+    window.location.hash = "#/dashboard";
+  }
+
   function highlight(text: string, term: string): React.ReactNode {
     if (!term) return <>{text}</>;
     const re = new RegExp(`\\b${escapeRegExp(term)}\\b`, "gi");
@@ -137,7 +151,7 @@ export function ReviewPage() {
           </div>
 
           {/* Definition card */}
-          <div className="rounded-xl border border-sky-300 bg-sky-50/40 p-3 mb-4">
+          <div className="rounded-xl border border-brand-300 bg-brand-50/40 p-3 mb-4">
             <div className="text-sm font-medium mb-1">Definition</div>
             {selectedTerm ? (
               <>
@@ -168,7 +182,17 @@ export function ReviewPage() {
       {/* Footer nav */}
       <div className="mt-4 flex justify-between">
         <button onClick={() => { window.location.hash = "#/live"; }} className="rounded-md border px-3 py-2 text-sm">Back to Live</button>
-        <button onClick={() => { window.location.hash = "#/"; }} className="rounded-md bg-sky-500 text-white px-4 py-2 text-sm">New Meeting</button>
+        <div className="flex gap-2 items-center">
+          <button onClick={() => { window.location.hash = "#/"; }} className="rounded-md bg-brand-500 text-white px-4 py-2 text-sm">New Meeting</button>
+          <button
+            onClick={handleSaveAndExit}
+            className="btn-brand"
+            title="Save this review and go to Dashboard"
+            type="button"
+          >
+            Save & Exit
+          </button>
+        </div>
       </div>
     </div>
   );

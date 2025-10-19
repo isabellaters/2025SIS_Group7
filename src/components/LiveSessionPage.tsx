@@ -69,11 +69,26 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     window.location.hash = '#/review';
   };
 
+  // Save current live session to localStorage (for ReviewPage)
+  function handleSaveMeeting(): void {
+    try {
+      const snapshot = {
+        title,
+        transcriptLines,
+        translationLines,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem("ll:session", JSON.stringify(snapshot));
+      localStorage.setItem("ll:lastReview", JSON.stringify({ title: title || "Untitled", savedAt: snapshot.savedAt }));
+      console.log("Session saved");
+    } catch (e) {
+      console.error("Failed to save session", e);
+    }
+  }
+
   const containerClasses = isElectron
-    ? "w-full h-full rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
-    : isDocked
-      ? "fixed left-1/2 -translate-x-1/2 bottom-3 z-50 w-[min(1100px,90vw)] rounded-2xl shadow-2xl border border-neutral-200 bg-white/95 backdrop-blur p-4"
-      : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-white p-6";
+    ? "w-full h-full rounded-2xl shadow-2xl border border-neutral-200 bg-brand-50/95 backdrop-blur p-4"
+    : "mx-auto my-10 max-w-4xl rounded-2xl shadow-2xl border border-neutral-200 bg-brand-50 p-6";
 
   const translationText = translationLines.join("\n") +
     (interimTranslation ? `\n[${interimTranslation}]` : '');
@@ -153,6 +168,28 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
           onToggle={handleToggle}
           onEndSession={handleEndSession}
         />
+      </div>
+
+      {/* Add Save Meeting + End Session buttons (place near existing actions) */}
+      <div className="flex items-center gap-3">
+        {/* existing Start/Stop / other controls */}
+        <button
+          onClick={handleSaveMeeting}
+          className="btn-brand-outline"
+          title="Save meeting snapshot"
+          type="button"
+        >
+          Save Meeting
+        </button>
+
+        <button
+          onClick={handleEndSession}
+          className="btn-brand"
+          title="End session and go to Review"
+          type="button"
+        >
+          End Session
+        </button>
       </div>
     </div>
   );
