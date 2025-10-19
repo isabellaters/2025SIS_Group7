@@ -34,4 +34,5 @@ yarn.lock
 /playwright-report/
 /playwright/.cache/
 
+.claude
 CLAUDE.md

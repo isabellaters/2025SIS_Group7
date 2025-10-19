@@ -16,10 +16,10 @@ export function TransportControls({
       <button
         onClick={onToggle}
         className={
-          "px-6 py-2 rounded-md font-medium text-sm transition " +
+          "px-6 py-2 rounded-md font-medium text-sm transition shadow-md " +
           (isCapturing
-            ? "bg-primary-700 text-white hover:bg-primary-800"
-            : "bg-primary text-white hover:bg-primary-600")
+            ? "bg-red-600 text-white hover:bg-red-700 border border-red-700"
+            : "bg-green-600 text-white hover:bg-green-700 border border-green-700")
         }
       >
         {isCapturing ? "Stop Recording" : "Start Recording"}
@@ -27,7 +27,7 @@ export function TransportControls({
 
       <button
         onClick={onEndSession}
-        className="px-6 py-2 rounded-md font-medium text-sm transition bg-primary text-white hover:bg-primary-600"
+        className="px-6 py-2 rounded-md font-medium text-sm transition bg-sky-600 text-white hover:bg-sky-700 border border-sky-700 shadow-md"
       >
         End Session
       </button>

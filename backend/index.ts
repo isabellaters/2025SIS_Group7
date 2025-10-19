@@ -29,7 +29,7 @@ app.post('/api/summary', async (req, res) => {
   if (!transcript) {
     return res.status(400).json({ error: "Transcript is required"});
   }
-  
+
   try {
     const result = await processLectureData(transcript);
     res.json(result);
@@ -43,6 +43,24 @@ app.post('/api/summary', async (req, res) => {
     }
 
     res.status(500).json({ error: "Failed to process lecture" });
+  }
+});
+
+// AI Definition Generation
+app.post('/api/definition', async (req, res) => {
+  const { term, context } = req.body;
+
+  if (!term || !context) {
+    return res.status(400).json({ error: "Term and context are required" });
+  }
+
+  try {
+    const { generateDefinition } = await import('./services/gemini');
+    const definition = await generateDefinition(term, context);
+    res.json({ term, definition });
+  } catch (err: any) {
+    console.error('Error generating definition:', err);
+    res.status(500).json({ error: "Failed to generate definition" });
   }
 });
 

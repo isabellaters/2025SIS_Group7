@@ -21,32 +21,45 @@ async function callGeminiAPI(prompt: string): Promise<string> {
 }
 
 export async function summarizeLecture(transcript: string): Promise<string> {
-    const prompt = `Summarize the following lecture transcript in a concise paragraph:\n${transcript}`;
+    const prompt = `Summarize the following lecture transcript in 2-3 concise sentences. Focus on the main topic and key takeaways:\n\n${transcript}`;
     return await callGeminiAPI(prompt);
 }
 
 export async function extractKeywords(transcript: string): Promise<string[]> {
-    const prompt = `Extract the main keywords from the following lecture transcript as a comma-separated list:\n${transcript}`;
+    const prompt = `Extract the main keywords and technical terms from the following lecture transcript. Return only the most important 8-10 terms as a comma-separated list without any additional text:\n\n${transcript}`;
     const result = await callGeminiAPI(prompt);
     return result.split(',').map(k => k.trim()).filter(Boolean);
 }
 
-export async function generateQuestions(transcript: string, numQuestions: number = 3): Promise<string[]> {
-    const prompt = `Generate ${numQuestions} quiz questions based on the following lecture transcript. Number each question:\n${transcript}`;
+export async function generateDefinition(term: string, context: string): Promise<string> {
+    const prompt = `Given the following lecture context, provide a clear and concise definition (1-2 sentences) for the term "${term}":\n\nContext:\n${context}`;
+    return await callGeminiAPI(prompt);
+}
+
+export async function generateKeyPoints(transcript: string): Promise<string[]> {
+    const prompt = `Generate 5-7 key learning points from the following lecture transcript. Format each point as a concise bullet point (one line each). Return only the points, one per line:\n\n${transcript}`;
     const result = await callGeminiAPI(prompt);
-    // Split by line and filter out empty lines
-    return result.split(/\n|\r/).map(q => q.trim()).filter(q => q.length > 0);
+    return result.split(/\n/).map(p => p.trim().replace(/^[•\-*]\s*/, '')).filter(p => p.length > 0);
+}
+
+export async function generateQuestions(transcript: string, numQuestions: number = 3): Promise<string[]> {
+    const prompt = `Generate exactly ${numQuestions} review questions based on the following lecture transcript. These should test understanding of the main concepts. Return only the questions, one per line, without numbering:\n\n${transcript}`;
+    const result = await callGeminiAPI(prompt);
+    return result.split(/\n/).map(q => q.trim().replace(/^\d+[\.)]\s*/, '')).filter(q => q.length > 0).slice(0, numQuestions);
 }
 
 export async function processLectureData(transcript: string) {
-    const summary = await summarizeLecture(transcript);
-    const keywords = await extractKeywords(transcript);
-    const questions = await generateQuestions(transcript);
-    console.log("test");
+    const [summary, keywords, keyPoints, questions] = await Promise.all([
+        summarizeLecture(transcript),
+        extractKeywords(transcript),
+        generateKeyPoints(transcript),
+        generateQuestions(transcript, 3)
+    ]);
 
     return {
         summary,
         keywords,
+        keyPoints,
         questions
     };
 }
