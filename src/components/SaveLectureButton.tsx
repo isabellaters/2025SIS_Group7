@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 interface SaveLectureButtonProps {
   title: string;
@@ -18,26 +18,27 @@ export function SaveLectureButton({
   onSuccess,
 }: SaveLectureButtonProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
 
   const handleSave = async () => {
     setIsSaving(true);
-    setSaveStatus('idle');
+    setSaveStatus("idle");
 
     try {
-      const transcriptText = transcriptLines.join('\n');
-      const translationText = translationLines.join('\n');
+      const transcriptText = transcriptLines.join("\n");
+      const translationText = translationLines.join("\n");
 
-      const response = await fetch('http://localhost:3001/api/lectures/save', {
-        method: 'POST',
+      // Updated endpoint to match backend
+      const response = await fetch("http://localhost:3001/lecture/save", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           title,
           transcript: transcriptText,
-          translation: translationText || undefined,
-          translationLanguage: targetLanguage || undefined,
+          translation: translationText || "",
+          translationLanguage: targetLanguage || "en",
         }),
       });
 
@@ -46,36 +47,37 @@ export function SaveLectureButton({
       }
 
       const result = await response.json();
-      console.log('Lecture saved:', result);
-      setSaveStatus('success');
+      console.log("Lecture saved:", result);
+      setSaveStatus("success");
+      if (onSuccess) onSuccess(result);
 
       // Reset status after 3 seconds
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
-      console.error('Error saving lecture:', error);
-      setSaveStatus('error');
+      console.error("Error saving lecture:", error);
+      setSaveStatus("error");
 
       // Reset status after 3 seconds
-      setTimeout(() => setSaveStatus('idle'), 3000);
+      setTimeout(() => setSaveStatus("idle"), 3000);
     } finally {
       setIsSaving(false);
     }
   };
 
   const getButtonText = () => {
-    if (isSaving) return 'Saving...';
-    if (saveStatus === 'success') return '✓ Saved';
-    if (saveStatus === 'error') return '✗ Failed';
-    return 'Save';
+    if (isSaving) return "Saving...";
+    if (saveStatus === "success") return "✓ Saved";
+    if (saveStatus === "error") return "✗ Failed";
+    return "Save";
   };
 
   const getButtonClass = () => {
     const baseClass = "rounded-md px-3 py-1 text-sm font-medium transition-colors ";
 
-    if (saveStatus === 'success') {
+    if (saveStatus === "success") {
       return baseClass + "bg-green-500 text-white cursor-default";
     }
-    if (saveStatus === 'error') {
+    if (saveStatus === "error") {
       return baseClass + "bg-red-500 text-white cursor-default";
     }
     if (disabled || isSaving) {
@@ -87,7 +89,7 @@ export function SaveLectureButton({
   return (
     <button
       onClick={handleSave}
-      disabled={disabled || isSaving || saveStatus !== 'idle'}
+      disabled={disabled || isSaving || saveStatus !== "idle"}
       className={getButtonClass()}
       title="Save lecture to database"
     >

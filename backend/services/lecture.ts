@@ -1,89 +1,126 @@
-
+import express from "express";
 import type { Transcript, Lecture } from "../../src/types/index";
 import { db } from "./firebase";
-import admin from 'firebase-admin';
+import admin from "firebase-admin";
 
 const TRANSCRIPTS_COLLECTION = "transcripts";
 const LECTURES_COLLECTION = "lectures";
 
 export class LectureService {
-  // ------------------ Transcripts ------------------
-  static async createTranscript(data: Omit<Transcript, "id" | "createdAt" | "updatedAt">): Promise<string> {
+  public router = express.Router();
+
+  constructor() {
+    // Existing routes
+    this.router.get("/transcripts/:id", this.getTranscriptById);
+    this.router.get("/:id", this.getLectureById);
+    this.router.post("/transcripts", this.createTranscript);
+    this.router.post("/", this.createLecture);
+
+    // New route for SaveLectureButton
+    this.router.post("/save", this.saveLecture);
+  }
+
+  // ------------------ Transcript Routes ------------------
+  async createTranscript(req: express.Request, res: express.Response) {
     try {
+      const data = req.body as Omit<Transcript, "id" | "createdAt" | "updatedAt">;
       const now = admin.firestore.Timestamp.now();
+
       const transcript: Omit<Transcript, "id"> = {
         ...data,
         status: data.status || "processing",
         createdAt: now,
         updatedAt: now,
       };
+
       const docRef = await db.collection(TRANSCRIPTS_COLLECTION).add(transcript);
-      return docRef.id;
+      res.json({ id: docRef.id, message: "Transcript created successfully ✅" });
     } catch (err) {
       console.error("Error creating transcript:", err);
-      throw err;
+      res.status(500).json({ error: "Failed to create transcript" });
     }
   }
 
-  static async findTranscript(id: string): Promise<Transcript | null> {
+  async getTranscriptById(req: express.Request, res: express.Response) {
     try {
+      const { id } = req.params;
       const docRef = db.collection(TRANSCRIPTS_COLLECTION).doc(id);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) return null;
-      return { id: docSnap.id, ...docSnap.data() } as Transcript;
+      const docSnap = (await docRef.get()) as FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>;
+
+      if (!docSnap.exists) return res.status(404).json({ error: "Transcript not found" });
+      res.json({ id: docSnap.id, ...(docSnap.data() as object) });
     } catch (err) {
       console.error("Error fetching transcript:", err);
-      throw err;
+      res.status(500).json({ error: "Failed to fetch transcript" });
     }
   }
 
-  static async updateTranscript(id: string, data: Partial<Transcript>): Promise<void> {
+  // ------------------ Lecture Routes ------------------
+  async createLecture(req: express.Request, res: express.Response) {
     try {
-      const docRef = db.collection(TRANSCRIPTS_COLLECTION).doc(id);
-      await docRef.update({ ...data, updatedAt: admin.firestore.Timestamp.now() });
-    } catch (err) {
-      console.error("Error updating transcript:", err);
-      throw err;
-    }
-  }
-
-  // ------------------ Lectures ------------------
-  static async createLecture(data: Omit<Lecture, "id" | "createdAt" | "updatedAt">): Promise<string> {
-    try {
+      const data = req.body as Omit<Lecture, "id" | "createdAt" | "updatedAt">;
       const now = admin.firestore.Timestamp.now();
+
       const lecture: Omit<Lecture, "id"> = {
         ...data,
         createdAt: now,
         updatedAt: now,
         status: data.status || "processing",
       };
+
       const docRef = await db.collection(LECTURES_COLLECTION).add(lecture);
-      return docRef.id;
+      res.json({ id: docRef.id, message: "Lecture created successfully ✅" });
     } catch (err) {
       console.error("Error creating lecture:", err);
-      throw err;
+      res.status(500).json({ error: "Failed to create lecture" });
     }
   }
 
-  static async findLecture(id: string): Promise<Lecture | null> {
+  async getLectureById(req: express.Request, res: express.Response) {
     try {
+      const { id } = req.params;
       const docRef = db.collection(LECTURES_COLLECTION).doc(id);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) return null;
-      return { id: docSnap.id, ...docSnap.data() } as Lecture;
+      const docSnap = (await docRef.get()) as FirebaseFirestore.DocumentSnapshot<FirebaseFirestore.DocumentData>;
+
+      if (!docSnap.exists) return res.status(404).json({ error: "Lecture not found" });
+      res.json({ id: docSnap.id, ...(docSnap.data() as object) });
     } catch (err) {
       console.error("Error fetching lecture:", err);
-      throw err;
+      res.status(500).json({ error: "Failed to fetch lecture" });
     }
   }
 
-  static async updateLecture(id: string, data: Partial<Lecture>): Promise<void> {
+  // ------------------ New Save Route ------------------
+  async saveLecture(req: express.Request, res: express.Response) {
     try {
-      const docRef = db.collection(LECTURES_COLLECTION).doc(id);
-      await docRef.update({ ...data, updatedAt: admin.firestore.Timestamp.now() });
+      const { title, transcript, translation, translationLanguage } = req.body;
+
+      if (!title || !transcript) {
+        return res.status(400).json({ error: "Missing title or transcript" });
+      }
+
+      const now = admin.firestore.Timestamp.now();
+      const lectureData = {
+        title,
+        transcript,
+        translation: translation || "",
+        translationLanguage: translationLanguage || "en",
+        createdAt: now,
+        updatedAt: now,
+        status: "saved",
+      };
+
+      const docRef = await db.collection(LECTURES_COLLECTION).add(lectureData);
+      console.log("Lecture saved to Firestore:", { id: docRef.id, title });
+
+      res.json({
+        message: "Lecture saved successfully",
+        id: docRef.id,
+        data: lectureData,
+      });
     } catch (err) {
-      console.error("Error updating lecture:", err);
-      throw err;
+      console.error("Error saving lecture:", err);
+      res.status(500).json({ error: "Failed to save lecture" });
     }
   }
 }
