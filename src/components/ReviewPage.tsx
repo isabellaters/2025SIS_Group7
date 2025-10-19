@@ -104,6 +104,21 @@ export function ReviewPage() {
     return <>{out}</>;
   }
 
+// Save current session snapshot and navigate to Dashboard
+function handleSaveAndExit() {
+    try {
+     if (session) {
+             const toSave = { ...session, updatedAt: new Date().toISOString() };
+             localStorage.setItem(SESSION_KEY, JSON.stringify(toSave));
+      }
+    // optional quick reference
+    localStorage.setItem("ll:lastReview", JSON.stringify({ title: session?.title || "Untitled", savedAt: new Date().toISOString() }));
+    } catch (e) {
+     console.error("Failed to save session", e);
+    }
+    window.location.hash = "#/dashboard";
+  }
+
   return (
     <div id="ll-container" data-page="review" className="mx-auto my-4 max-w-6xl px-3">
       <div className="grid grid-cols-12 gap-4">
@@ -179,7 +194,7 @@ export function ReviewPage() {
         </div>
       </div>
 
-      {/* Footer nav */}
+     {/* Footer nav */}
       <div className="mt-4 flex justify-between">
         <button onClick={() => { window.location.hash = "#/live"; }} className="rounded-md border px-3 py-2 text-sm">Back to Live</button>
         <div className="flex gap-2 items-center">
