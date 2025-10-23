@@ -7,6 +7,8 @@ import { processLectureData } from './services/gemini';
 import { LectureService } from './services/lecture';
 import { SpeechToTextService } from './services/speech-to-text';
 import { TranslationService } from './services/translation';
+import { SubjectService } from "./services/subject";
+import { db } from "./services/firebase";
 
 const app = express();
 const httpServer = createServer(app);
@@ -21,6 +23,27 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
+//Add subject
+app.post("/subjects", async (req, res) => {
+  try {
+    const id = await SubjectService.createSubject(req.body);
+    res.status(200).send({ id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Failed to create subject" });
+  }
+});
+
+// Get all subjects
+app.get("/subjects", async (req, res) => {
+  try {
+    const subjects = await SubjectService.getAllSubjects();
+    res.status(200).json(subjects);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch subjects" });
+  }
+});
 
 // AI Summary Generation
 app.post('/api/summary', async (req, res) => {
@@ -287,5 +310,23 @@ app.post("/api/lectures/save", async (req, res) => {
   } catch (err) {
     console.error('Error saving lecture:', err);
     res.status(500).json({ error: "Failed to save lecture" });
+  }
+});
+// Get all lectures for a specific subject
+app.get("/api/lectures/subject/:subjectId", async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+    const lecturesRef = db.collection("lectures");
+    const snap = await lecturesRef.where("subjectId", "==", subjectId).get();
+
+    const lectures = snap.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.status(200).json(lectures);
+  } catch (err) {
+    console.error("Error fetching lectures by subject:", err);
+    res.status(500).json({ error: "Failed to fetch lectures" });
   }
 });
