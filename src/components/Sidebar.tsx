@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onNewRecording?: () => void;
+    onImportFile?: (file: File) => void;
 }
 
-export default function Sidebar({ collapsed, onToggle, onNewRecording }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onNewRecording, onImportFile }: SidebarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const collapsedWidth = 60;
   const expandedWidth = 260;
   const transition = '250ms cubic-bezier(0.4, 0, 0.2, 1)';
@@ -139,7 +141,22 @@ export default function Sidebar({ collapsed, onToggle, onNewRecording }: Sidebar
         </button>
 
         {/* Import File Button */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            accept="audio/*,video/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && onImportFile) {
+                onImportFile(file);
+                // Reset the input so the same file can be selected again
+                e.target.value = '';
+              }
+            }}
+          />
         <button
+            onClick={() => fileInputRef.current?.click()}
           style={{
             width: '88%',
             background: '#f7f7f7',
