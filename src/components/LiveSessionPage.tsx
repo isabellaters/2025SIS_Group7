@@ -52,25 +52,51 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
   } = useAudioCapture();
 
   // Update display transcript when real transcription starts
-  // Clear sample data and use real transcription
   React.useEffect(() => {
     if (transcriptLines.length > 0) {
-      setDisplayTranscript(transcriptLines);
+      if (!cameFromReview.current) {
+        // Fresh session: just use the hook's transcriptLines
+        setDisplayTranscript(transcriptLines);
+      } else {
+        // Came from review: append NEW lines to the restored transcript
+        setDisplayTranscript((prev) => {
+          // Get the restored transcript (first N lines)
+          const restoredLines = prev.slice(0, restoredLineCount.current);
+          // Append the new transcription from the hook
+          const newLines = [...restoredLines, ...transcriptLines];
+          console.log(`Appending transcription: ${restoredLines.length} restored + ${transcriptLines.length} new = ${newLines.length} total`);
+          return newLines;
+        });
+      }
     }
   }, [transcriptLines]);
 
-  // Clear sample transcript when recording starts
+  // Clear sample transcript when recording starts (but only if it's the sample data)
+  const hasStartedRecordingOnce = React.useRef(false);
+
   React.useEffect(() => {
-    if (isCapturing) {
-      // Only clear if we're still showing sample data
-      // Don't clear if we already have real transcription
-      if (transcriptLines.length === 0) {
+    if (isCapturing && !hasStartedRecordingOnce.current) {
+      // First time starting capture in this session
+      hasStartedRecordingOnce.current = true;
+
+      // Only clear if we're showing the default sample data
+      const isSampleData = displayTranscript.length === SAMPLE_TRANSCRIPT.length &&
+                          displayTranscript.every((line, idx) => line === SAMPLE_TRANSCRIPT[idx]);
+
+      // Only clear if it's sample data
+      if (isSampleData) {
         setDisplayTranscript([]);
       }
     }
-  }, [isCapturing, transcriptLines.length]);
+  }, [isCapturing, displayTranscript]);
+
+  // Track if we came from review page (to distinguish from fresh page load)
+  const cameFromReview = React.useRef(false);
+  // Track the number of lines we had when we restored (to know what's new)
+  const restoredLineCount = React.useRef(0);
 
   // pull title + dock saved by NewMeetingPage / UI prefs (client-only)
+  // Also restore session data if coming back from review page
   useEffect(() => {
     const ui = lsGet(UI_PREF_KEY);
     if (ui) {
@@ -79,6 +105,28 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     const saved = lsGet("ll:newMeeting");
     if (saved) {
       try { setTitle((JSON.parse(saved) as any).lectureTitle || "Untitled Session"); } catch {}
+    }
+
+    // Check if there's saved session data from a previous session
+    const sessionData = lsGet("ll:session");
+
+    if (sessionData) {
+      try {
+        const session = JSON.parse(sessionData);
+        // Restore transcript if it exists and is not empty
+        if (session.transcriptLines && session.transcriptLines.length > 0) {
+          console.log("Restoring previous session transcript:", session.transcriptLines.length, "lines");
+          setDisplayTranscript(session.transcriptLines);
+          cameFromReview.current = true; // Mark that we restored data
+          restoredLineCount.current = session.transcriptLines.length; // Remember how many lines we restored
+        }
+        // Restore title if it exists
+        if (session.title) {
+          setTitle(session.title);
+        }
+      } catch (error) {
+        console.error("Error restoring session data:", error);
+      }
     }
   }, []);
 
