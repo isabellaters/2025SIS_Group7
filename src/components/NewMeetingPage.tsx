@@ -468,6 +468,10 @@ export function NewMeetingPage({ onStart, onClose }: NewMeetingPageProps) {
         <button
           onClick={() => {
             lsSet("ll:newMeeting", JSON.stringify({ lectureTitle, subjects, subject, isDocked }));
+            // Clear any previous session data when starting a NEW meeting
+            localStorage.removeItem("ll:session");
+            localStorage.removeItem("ll:lastReview");
+            console.log("Starting new meeting - cleared previous session data");
             if (typeof onStart === "function") {
               onStart();
               return;

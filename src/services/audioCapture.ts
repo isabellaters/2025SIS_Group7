@@ -11,7 +11,9 @@ export class AudioCaptureService {
   private mediaStream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
   private processor: ScriptProcessorNode | null = null;
+  private gainNode: GainNode | null = null;
   private onAudioDataCallback: ((data: Float32Array) => void) | null = null;
+  private readonly AUDIO_GAIN = 3.0; // Amplify audio by 3x
 
   /**
    * Get available audio sources (screens/windows)
@@ -69,6 +71,11 @@ export class AudioCaptureService {
 
       const source = this.audioContext.createMediaStreamSource(stream);
 
+      // Create gain node to amplify audio
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.value = this.AUDIO_GAIN;
+      console.log('Audio gain applied:', this.AUDIO_GAIN + 'x');
+
       // Create script processor for audio chunks
       this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
@@ -90,7 +97,9 @@ export class AudioCaptureService {
         }
       };
 
-      source.connect(this.processor);
+      // Connect audio pipeline: source -> gain -> processor -> destination
+      source.connect(this.gainNode);
+      this.gainNode.connect(this.processor);
       this.processor.connect(this.audioContext.destination);
 
       console.log('Audio capture pipeline connected successfully');
@@ -107,6 +116,11 @@ export class AudioCaptureService {
     if (this.processor) {
       this.processor.disconnect();
       this.processor = null;
+    }
+
+    if (this.gainNode) {
+      this.gainNode.disconnect();
+      this.gainNode = null;
     }
 
     if (this.audioContext) {
