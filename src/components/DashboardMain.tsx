@@ -89,7 +89,7 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
           {subjects.map((s) => (
             <div
-              key={s.id}
+              key={s.id || s.docId}
               style={{
                 border: "1px solid #eee",
                 borderRadius: 16,
@@ -103,7 +103,11 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
                 transition: "box-shadow 0.12s",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
               }}
-              onClick={() => onSubjectClick(s.id)}
+              // ✅ Added debug log + safe ID fallback
+              onClick={() => {
+                console.log("🖱️ Subject clicked:", s);
+                onSubjectClick(s.id || s.docId);
+              }}
               onMouseOver={(e) =>
                 (e.currentTarget.style.boxShadow = "0 4px 18px rgba(37,99,235,0.08)")
               }

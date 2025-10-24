@@ -1,6 +1,6 @@
 // src/components/LectureDetail.tsx
-import React, { useState } from "react";
-import { getLecturesBySubjectId, getSubjectById } from "../lib/mockData";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 interface LectureDetailProps {
   sidebarCollapsed: boolean;
@@ -11,77 +11,9 @@ interface LectureDetailProps {
 
 type Tab = "transcription" | "translation" | "notes";
 
-// Mock transcription/translation data
-const mockTranscription = `Welcome to today's lecture on Neural Networks. We'll be covering the fundamentals of how neural networks work, starting with the basic perceptron model.
-
-A perceptron is the simplest form of a neural network. It takes multiple inputs, applies weights to them, sums them up, and passes the result through an activation function. This is the building block of more complex networks.
-
-The key components are:
-- Input layer: receives the raw data
-- Weights: determine the importance of each input
-- Activation function: introduces non-linearity
-- Output: the final prediction or classification
-
-Let's dive deeper into how backpropagation works. Backpropagation is the algorithm used to train neural networks by adjusting the weights based on the error in predictions.
-
-The process involves:
-1. Forward pass: compute predictions
-2. Calculate loss: measure error
-3. Backward pass: compute gradients
-4. Update weights: adjust based on gradients
-
-This iterative process continues until the network converges to an optimal solution. Modern deep learning frameworks like TensorFlow and PyTorch automate much of this process.
-
-In our next session, we'll implement a simple neural network from scratch to see these concepts in action.`;
-
-const mockTranslation = `Bienvenue à la conférence d'aujourd'hui sur les réseaux de neurones. Nous allons couvrir les principes fondamentaux du fonctionnement des réseaux de neurones, en commençant par le modèle de perceptron de base.
-
-Un perceptron est la forme la plus simple d'un réseau de neurones. Il prend plusieurs entrées, leur applique des poids, les additionne et fait passer le résultat à travers une fonction d'activation. C'est la brique de base des réseaux plus complexes.
-
-Les composants clés sont:
-- Couche d'entrée: reçoit les données brutes
-- Poids: déterminent l'importance de chaque entrée
-- Fonction d'activation: introduit la non-linéarité
-- Sortie: la prédiction ou classification finale
-
-Approfondissons le fonctionnement de la rétropropagation. La rétropropagation est l'algorithme utilisé pour entraîner les réseaux de neurones en ajustant les poids en fonction de l'erreur dans les prédictions.
-
-Le processus comprend:
-1. Passe avant: calculer les prédictions
-2. Calculer la perte: mesurer l'erreur
-3. Passe arrière: calculer les gradients
-4. Mettre à jour les poids: ajuster en fonction des gradients
-
-Ce processus itératif se poursuit jusqu'à ce que le réseau converge vers une solution optimale. Les frameworks modernes d'apprentissage profond comme TensorFlow et PyTorch automatisent une grande partie de ce processus.
-
-Dans notre prochaine session, nous implémenterons un réseau de neurones simple à partir de zéro pour voir ces concepts en action.`;
-
-const mockNotes = `## Key Concepts
-
-### Perceptron
-- Simplest neural network unit
-- Multiple inputs → weighted sum → activation → output
-- Binary classification originally
-
-### Backpropagation
-- Training algorithm for neural networks
-- Uses chain rule to compute gradients
-- Essential for deep learning
-
-### Important Formulas
-- Weighted sum: z = Σ(wi × xi) + b
-- Sigmoid activation: σ(z) = 1 / (1 + e^(-z))
-- MSE Loss: L = (1/n) × Σ(y - ŷ)²
-
-## TODO
-- [ ] Review gradient descent variations
-- [ ] Implement perceptron in Python
-- [ ] Study activation function alternatives
-
-## Questions
-1. Why do we need non-linear activation functions?
-2. How does learning rate affect convergence?
-3. What's the difference between batch and stochastic gradient descent?`;
+const mockTranscription = `Welcome to today's lecture on Neural Networks...`;
+const mockTranslation = `Bienvenue à la conférence d'aujourd'hui sur les réseaux de neurones...`;
+const mockNotes = `## Key Concepts\n\n### Perceptron\n- Simplest neural network unit...`;
 
 export default function LectureDetail({
   sidebarCollapsed,
@@ -90,13 +22,35 @@ export default function LectureDetail({
   onBack,
 }: LectureDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("transcription");
-  
-  // Find the lecture
-  const lectures = getLecturesBySubjectId(subjectId);
-  const lecture = lectures.find(l => l.id === lectureId);
-  const subject = getSubjectById(subjectId);
+  const [lecture, setLecture] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (!lecture || !subject) {
+  // ✅ Fetch real lecture from backend
+  useEffect(() => {
+    async function fetchLecture() {
+      try {
+        const res = await axios.get(`http://localhost:3001/api/lectures/${lectureId}`);
+        setLecture(res.data);
+      } catch (err) {
+        console.error("Error fetching lecture:", err);
+        setLecture(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchLecture();
+  }, [lectureId]);
+
+  // ✅ Handle loading & not found
+  if (isLoading) {
+    return (
+      <div style={{ padding: 48, flex: 1 }}>
+        <h2>Loading lecture...</h2>
+      </div>
+    );
+  }
+
+  if (!lecture) {
     return (
       <div style={{ padding: 48, flex: 1 }}>
         <h2>Lecture not found</h2>
@@ -105,14 +59,20 @@ export default function LectureDetail({
     );
   }
 
-  function formatDate(date: Date): string {
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+  // ✅ Safe date formatter
+  function formatDate(date: any): string {
+    try {
+      const d = new Date(date.seconds ? date.seconds * 1000 : date);
+      return d.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
   }
 
   function getTabContent(): string {
@@ -162,11 +122,9 @@ export default function LectureDetail({
             cursor: "pointer",
             padding: "4px 0",
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = "#222")}
-          onMouseOut={(e) => (e.currentTarget.style.color = "#666")}
         >
           <span style={{ fontSize: 20 }}>←</span>
-          Back to {subject.name}
+          Back to Dashboard
         </button>
 
         {/* Lecture header */}
@@ -179,7 +137,7 @@ export default function LectureDetail({
               marginBottom: 8,
             }}
           >
-            {subject.code} · {subject.name}
+            {lecture.subjectId || "Unknown Subject"}
           </div>
           <h1
             style={{
@@ -189,7 +147,7 @@ export default function LectureDetail({
               lineHeight: 1.2,
             }}
           >
-            {lecture.title}
+            {lecture.title || "Untitled Lecture"}
           </h1>
 
           {/* Metadata row */}
@@ -204,95 +162,17 @@ export default function LectureDetail({
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span>📅</span>
-              {formatDate(lecture.date)}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>⏱️</span>
-              {lecture.duration}
+              {lecture.createdAt ? formatDate(lecture.createdAt) : "—"}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span>📄</span>
-              {lecture.wordCount} words
+              {lecture.transcriptId ? `Transcript: ${lecture.transcriptId}` : "No transcript"}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span>⚙️</span>
+              {lecture.status || "Processing"}
             </div>
           </div>
-        </div>
-
-        {/* Action buttons */}
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            marginBottom: 24,
-            flexWrap: "wrap",
-          }}
-        >
-          <button
-            style={{
-              padding: "10px 18px",
-              background: "#2563eb",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-            onMouseOver={(e) =>
-              (e.currentTarget.style.background = "#1d4ed8")
-            }
-            onMouseOut={(e) =>
-              (e.currentTarget.style.background = "#2563eb")
-            }
-          >
-            📥 Export
-          </button>
-          <button
-            style={{
-              padding: "10px 18px",
-              background: "#fff",
-              color: "#222",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = "#f5f5f5";
-              e.currentTarget.style.borderColor = "#bbb";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = "#fff";
-              e.currentTarget.style.borderColor = "#ddd";
-            }}
-          >
-            ✏️ Edit
-          </button>
-          <button
-            style={{
-              padding: "10px 18px",
-              background: "#fff",
-              color: "#222",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = "#f5f5f5";
-              e.currentTarget.style.borderColor = "#bbb";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = "#fff";
-              e.currentTarget.style.borderColor = "#ddd";
-            }}
-          >
-            🔗 Share
-          </button>
         </div>
 
         {/* Tabs */}
@@ -326,16 +206,6 @@ export default function LectureDetail({
                 alignItems: "center",
                 gap: 8,
               }}
-              onMouseOver={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.color = "#222";
-                }
-              }}
-              onMouseOut={(e) => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.color = "#666";
-                }
-              }}
             >
               <span>{tab.icon}</span>
               {tab.label}
@@ -361,160 +231,6 @@ export default function LectureDetail({
           {getTabContent()}
         </div>
       </section>
-
-      {/* Right sidebar for glossary/metadata */}
-      <aside
-        style={{
-          width: 320,
-          background: "#fff",
-          borderLeft: "1px solid #eee",
-          padding: "48px 24px 24px 24px",
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-          overflowY: "auto",
-        }}
-      >
-        <h3
-          style={{
-            fontWeight: 700,
-            fontSize: "1.1rem",
-            marginBottom: 20,
-          }}
-        >
-          📚 Glossary
-        </h3>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                marginBottom: 4,
-                color: "#2563eb",
-                cursor: "pointer",
-              }}
-            >
-              Perceptron
-            </div>
-            <div style={{ fontSize: "0.9rem", color: "#666" }}>
-              The simplest form of a neural network unit
-            </div>
-          </div>
-
-          <div>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                marginBottom: 4,
-                color: "#2563eb",
-                cursor: "pointer",
-              }}
-            >
-              Backpropagation
-            </div>
-            <div style={{ fontSize: "0.9rem", color: "#666" }}>
-              Algorithm for training neural networks using gradient descent
-            </div>
-          </div>
-
-          <div>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                marginBottom: 4,
-                color: "#2563eb",
-                cursor: "pointer",
-              }}
-            >
-              Activation Function
-            </div>
-            <div style={{ fontSize: "0.9rem", color: "#666" }}>
-              Introduces non-linearity into the neural network
-            </div>
-          </div>
-
-          <div>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                marginBottom: 4,
-                color: "#2563eb",
-                cursor: "pointer",
-              }}
-            >
-              Gradient Descent
-            </div>
-            <div style={{ fontSize: "0.9rem", color: "#666" }}>
-              Optimization algorithm to minimize loss function
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: 40,
-            paddingTop: 24,
-            borderTop: "1px solid #eee",
-          }}
-        >
-          <h3
-            style={{
-              fontWeight: 700,
-              fontSize: "1.1rem",
-              marginBottom: 16,
-            }}
-          >
-            🔖 Key Timestamps
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div
-              style={{
-                fontSize: "0.9rem",
-                cursor: "pointer",
-                padding: "8px 0",
-              }}
-            >
-              <div style={{ color: "#2563eb", fontWeight: 600 }}>00:00</div>
-              <div style={{ color: "#666" }}>Introduction</div>
-            </div>
-            <div
-              style={{
-                fontSize: "0.9rem",
-                cursor: "pointer",
-                padding: "8px 0",
-              }}
-            >
-              <div style={{ color: "#2563eb", fontWeight: 600 }}>05:23</div>
-              <div style={{ color: "#666" }}>Perceptron basics</div>
-            </div>
-            <div
-              style={{
-                fontSize: "0.9rem",
-                cursor: "pointer",
-                padding: "8px 0",
-              }}
-            >
-              <div style={{ color: "#2563eb", fontWeight: 600 }}>12:45</div>
-              <div style={{ color: "#666" }}>Backpropagation explained</div>
-            </div>
-            <div
-              style={{
-                fontSize: "0.9rem",
-                cursor: "pointer",
-                padding: "8px 0",
-              }}
-            >
-              <div style={{ color: "#2563eb", fontWeight: 600 }}>28:10</div>
-              <div style={{ color: "#666" }}>Modern frameworks</div>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
   );
 }

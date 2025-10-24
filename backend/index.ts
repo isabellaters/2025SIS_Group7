@@ -246,10 +246,26 @@ httpServer.listen(PORT, () => {
 // Lecture 
 app.post("/api/lectures", async (req, res) => {
   try {
-    const id = await LectureService.createLecture(req.body);
+    const { title, transcriptId, subjectId, status } = req.body;
+
+    // ✅ Ensure subjectId exists
+    if (!subjectId) {
+      return res.status(400).json({ error: "subjectId is required" });
+    }
+
+    const lectureData = {
+      title: title || "Untitled Lecture",
+      transcriptId: transcriptId || null,
+      subjectId, // ✅ This is the key addition
+      status: status || "completed",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const id = await LectureService.createLecture(lectureData);
     res.json({ id });
   } catch (err) {
-    console.error(err);
+    console.error("Error creating lecture:", err);
     res.status(500).json({ error: "Failed to create lecture" });
   }
 });
@@ -258,6 +274,24 @@ app.get("/api/lectures/:id", async (req, res) => {
   const lecture = await LectureService.findLecture(req.params.id);
   if (!lecture) return res.status(404).json({ error: "Lecture not found" });
   res.json(lecture);
+});
+
+app.get("/api/lectures/:id", async (req, res) => {
+  const lecture = await LectureService.findLecture(req.params.id);
+  if (!lecture) return res.status(404).json({ error: "Lecture not found" });
+  res.json(lecture);
+});
+
+// ✅ Non-API version to match frontend route
+app.get("/lectures/:id", async (req, res) => {
+  try {
+    const lecture = await LectureService.findLecture(req.params.id);
+    if (!lecture) return res.status(404).json({ error: "Lecture not found" });
+    res.json(lecture);
+  } catch (err) {
+    console.error("Error fetching lecture:", err);
+    res.status(500).json({ error: "Failed to fetch lecture" });
+  }
 });
 
 app.patch("/api/lectures/:id", async (req, res) => {
@@ -312,7 +346,8 @@ app.post("/api/lectures/save", async (req, res) => {
     res.status(500).json({ error: "Failed to save lecture" });
   }
 });
-// Get all lectures for a specific subject
+
+// Get all lectures for a specific subject (existing API route)
 app.get("/api/lectures/subject/:subjectId", async (req, res) => {
   try {
     const { subjectId } = req.params;
@@ -328,5 +363,37 @@ app.get("/api/lectures/subject/:subjectId", async (req, res) => {
   } catch (err) {
     console.error("Error fetching lectures by subject:", err);
     res.status(500).json({ error: "Failed to fetch lectures" });
+  }
+});
+
+// ✅ NEW: non-API route to match frontend call (/lectures/subject/:subjectId)
+app.get("/lectures/subject/:subjectId", async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+    console.log("📚 Fetching lectures for subject:", subjectId);
+
+    const lecturesRef = db.collection("lectures");
+    const snap = await lecturesRef.where("subjectId", "==", subjectId).get();
+
+    const lectures = snap.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    res.status(200).json(lectures);
+  } catch (err) {
+    console.error("Error fetching lectures by subject (non-API):", err);
+    res.status(500).json({ error: "Failed to fetch lectures" });
+  }
+});
+// ✅ Non-API alias route (for frontend direct navigation)
+app.get("/lectures/:id", async (req, res) => {
+  try {
+    const lecture = await LectureService.findLecture(req.params.id);
+    if (!lecture) return res.status(404).json({ error: "Lecture not found" });
+    res.json(lecture);
+  } catch (err) {
+    console.error("Error fetching lecture:", err);
+    res.status(500).json({ error: "Failed to fetch lecture" });
   }
 });

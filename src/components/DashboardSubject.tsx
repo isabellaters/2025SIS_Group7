@@ -1,6 +1,7 @@
-// src/components/SubjectDashboard.tsx
-import React from "react";
-import { getLecturesBySubjectId, getSubjectById } from "../lib/mockData";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+
+const API_BASE_URL = "http://localhost:3001";
 
 interface SubjectDashboardProps {
   sidebarCollapsed: boolean;
@@ -17,8 +18,48 @@ export default function SubjectDashboard({
   onViewLecture,
   onNewRecording,
 }: SubjectDashboardProps) {
-  const subject = getSubjectById(subjectId);
-  const lectures = getLecturesBySubjectId(subjectId);
+  const [subject, setSubject] = useState<any>(null);
+  const [lectures, setLectures] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+  const fetchData = async () => {
+    try {
+      // ✅ Fetch all subjects
+      const subjRes = await axios.get("http://localhost:3001/subjects");
+      const allSubjects = subjRes.data || [];
+
+      console.log("✅ All subjects:", allSubjects);
+      console.log("🧩 subjectId type and value:", subjectId, typeof subjectId);
+      console.log("🔍 Looking for subjectId:", subjectId);
+
+      // ✅ Match subject by ID
+      const matched = allSubjects.find((s: any) => s.id === subjectId);
+      console.log("🎯 Matched subject:", matched);
+
+      setSubject(matched);
+
+      // ✅ Fetch all lectures under that subject
+      const lecRes = await axios.get(`http://localhost:3001/lectures/subject/${subjectId}`);
+      setLectures(lecRes.data || []);
+    } catch (err) {
+      console.error("Error loading subject page:", err);
+      setSubject(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [subjectId]);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 48, flex: 1 }}>
+        <h2>Loading...</h2>
+      </div>
+    );
+  }
 
   if (!subject) {
     return (
@@ -29,14 +70,19 @@ export default function SubjectDashboard({
     );
   }
 
-  function formatDate(date: Date): string {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+  function formatDate(raw: any): string {
+    try {
+      const date = raw && raw._seconds ? new Date(raw._seconds * 1000) : new Date(raw);
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return "Unknown date";
+    }
   }
 
   return (
@@ -45,9 +91,7 @@ export default function SubjectDashboard({
         flex: 1,
         background: "#fafafa",
         overflowY: "auto",
-        padding: sidebarCollapsed
-          ? "48px 24px 24px 24px"
-          : "48px 56px 24px 48px",
+        padding: sidebarCollapsed ? "48px 24px 24px 24px" : "48px 56px 24px 48px",
         transition: "padding 0.2s",
         minHeight: "100vh",
       }}
@@ -68,37 +112,19 @@ export default function SubjectDashboard({
           cursor: "pointer",
           padding: "4px 0",
         }}
-        onMouseOver={(e) => (e.currentTarget.style.color = "#222")}
-        onMouseOut={(e) => (e.currentTarget.style.color = "#666")}
       >
         <span style={{ fontSize: 20 }}>←</span>
         Back to Dashboard
       </button>
 
-      {/* Subject header */}
-      <h1
-        style={{
-          fontWeight: 700,
-          fontSize: "2.3rem",
-          marginBottom: 8,
-          lineHeight: 1.2,
-        }}
-      >
+      <h1 style={{ fontWeight: 700, fontSize: "2.3rem", marginBottom: 8 }}>
         {subject.name}
       </h1>
-      <div
-        style={{
-          color: "#666",
-          marginBottom: 38,
-          fontSize: "1.05rem",
-        }}
-      >
-        {subject.code}
+      <div style={{ color: "#666", marginBottom: 38, fontSize: "1.05rem" }}>
+        {subject.code} · {subject.term || "No term"}
       </div>
 
-      <h2 style={{ fontWeight: 700, fontSize: "1.4rem", marginBottom: 24 }}>
-        My Files
-      </h2>
+      <h2 style={{ fontWeight: 700, fontSize: "1.4rem", marginBottom: 24 }}>My Files</h2>
 
       {/* Lectures grid */}
       <div
@@ -109,107 +135,41 @@ export default function SubjectDashboard({
           maxWidth: 1400,
         }}
       >
-        {lectures.map((lecture) => (
-          <div
-            key={lecture.id}
-            style={{
-              border: "1px solid #e5e5e5",
-              borderRadius: 16,
-              background: "#fff",
-              padding: 24,
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              transition: "all 0.15s",
-              cursor: "pointer",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-            }}
-            onMouseOver={(e) =>
-              (e.currentTarget.style.boxShadow =
-                "0 4px 18px rgba(37,99,235,0.08)")
-            }
-            onMouseOut={(e) =>
-              (e.currentTarget.style.boxShadow =
-                "0 1px 3px rgba(0,0,0,0.04)")
-            }
-          >
+        {lectures.length === 0 ? (
+          <p style={{ color: "#777" }}>No lectures yet.</p>
+        ) : (
+          lectures.map((lecture) => (
             <div
+              key={lecture.id}
               style={{
-                fontWeight: 700,
-                fontSize: "1.2rem",
-                marginBottom: 8,
-              }}
-            >
-              {lecture.title}
-            </div>
-
-            <div
-              style={{
+                border: "1px solid #e5e5e5",
+                borderRadius: 16,
+                background: "#fff",
+                padding: 24,
                 display: "flex",
-                alignItems: "center",
-                gap: 8,
-                color: "#666",
-                fontSize: "0.95rem",
-              }}
-            >
-              <span>📅</span>
-              {formatDate(lecture.date)}
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                color: "#666",
-                fontSize: "0.95rem",
-              }}
-            >
-              <span>⏱️</span>
-              {lecture.duration}
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                color: "#666",
-                fontSize: "0.95rem",
-              }}
-            >
-              <span>📄</span>
-              {lecture.wordCount} words
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewLecture(lecture.id);
-              }}
-              style={{
-                background: "#222",
-                color: "#fff",
-                border: "none",
-                borderRadius: 8,
-                padding: "12px",
-                fontSize: "1rem",
-                fontWeight: 600,
+                flexDirection: "column",
+                gap: 12,
                 cursor: "pointer",
-                marginTop: 8,
-                transition: "all 0.15s",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
               }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.background = "#000")
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.background = "#222")
-              }
+              onClick={() => onViewLecture(lecture.id)}
             >
-              View
-            </button>
-          </div>
-        ))}
+              <div style={{ fontWeight: 700, fontSize: "1.2rem" }}>
+                {lecture.title || "Untitled Lecture"}
+              </div>
+
+              <div style={{ color: "#666", fontSize: "0.95rem" }}>
+                📅 {formatDate(lecture.date || lecture.createdAt)}
+              </div>
+              <div style={{ color: "#666", fontSize: "0.95rem" }}>
+                ⏱️ {lecture.duration || "Unknown duration"}
+              </div>
+              <div style={{ color: "#666", fontSize: "0.95rem" }}>
+                📄 {lecture.wordCount || 0} words
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </section>
   );
