@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
-// import { getAllSubjects } from "../lib/mockData";
+import { useSubjects, invalidateSubjectsCache } from "../hooks/useSubjects";
+import { ConfirmModal } from "./ConfirmModal";
+import { AlertModal } from "./AlertModal";
 
 interface DashboardMainProps {
   sidebarCollapsed: boolean;
@@ -15,21 +17,8 @@ const recents = [
 ];
 
 export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: DashboardMainProps) {
-  const [subjects, setSubjects] = useState<any[]>([]);
-  
-  // --- Fetch subjects from backend ---
-  useEffect(() => {
-    const fetchSubjects = async () => {
-      try {
-        const res = await axios.get("http://localhost:3001/subjects");
-        console.log("📡 subjects from backend:", res.data);
-        setSubjects(res.data);
-      } catch (err) {
-        console.error("Error fetching subjects:", err);
-      }
-    };
-    fetchSubjects();
-  }, []);
+  // ✅ Use optimized hook with caching
+  const { subjects, loading: subjectsLoading, error: subjectsError, refetch } = useSubjects();
 
   // --- Add Subject Modal state ---
   const [showModal, setShowModal] = useState(false);
@@ -41,7 +30,34 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
     term: "",
   });
 
-  // ✅ UPDATED handleAddSubject: now refreshes subjects immediately
+  // --- Custom modal states ---
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    danger?: boolean;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    danger: false,
+  });
+
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "success" | "error" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  // ✅ UPDATED handleAddSubject: invalidates cache and refetches
   const handleAddSubject = async () => {
     if (!form.name || !form.code) {
       setError("Please enter name and code");
@@ -55,19 +71,66 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
       const res = await axios.post("http://localhost:3001/subjects", form);
       console.log("Subject added:", res.data);
 
-      // Refresh subjects list after adding
-      const res2 = await axios.get("http://localhost:3001/subjects");
-      setSubjects(res2.data);
+      // Invalidate cache and refresh subjects list
+      invalidateSubjectsCache();
+      await refetch();
 
-      alert("Subject added successfully!");
       setShowModal(false);
       setForm({ name: "", code: "", term: "" });
+
+      // Show success alert
+      setAlertModal({
+        isOpen: true,
+        title: "Success!",
+        message: "Subject added successfully!",
+        type: "success",
+      });
     } catch (err) {
       console.error(err);
       setError("Failed to add subject. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle delete subject
+  const handleDeleteSubject = (subjectId: string, subjectName: string, lectureCount: number) => {
+    const message = lectureCount > 0
+      ? `This will permanently delete this subject and all ${lectureCount} ${lectureCount === 1 ? 'lecture' : 'lectures'} saved inside it.\n\nAll recordings, transcripts, and data associated with ${lectureCount === 1 ? 'this lecture' : 'these lectures'} will be lost.\n\nThis action cannot be undone.`
+      : `This will permanently delete this subject.\n\nThis action cannot be undone.`;
+
+    setConfirmModal({
+      isOpen: true,
+      title: `Delete "${subjectName}"?`,
+      message,
+      danger: true,
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+
+        try {
+          await axios.delete(`http://localhost:3001/subjects/${subjectId}`);
+
+          // Invalidate cache and refresh
+          invalidateSubjectsCache();
+          await refetch();
+
+          setAlertModal({
+            isOpen: true,
+            title: "Deleted!",
+            message: `Subject "${subjectName}" deleted successfully!`,
+            type: "success",
+          });
+        } catch (err: any) {
+          console.error("Error deleting subject:", err);
+          setAlertModal({
+            isOpen: true,
+            title: "Error",
+            message: `Failed to delete subject: ${err.response?.data?.error || err.message}`,
+            type: "error",
+          });
+        }
+      },
+    });
   };
 
   return (
@@ -86,10 +149,52 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
           Welcome back, John! Here are your subjects and recent activity.
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
-          {subjects.map((s) => (
+        {subjectsLoading ? (
+          <div style={{ textAlign: "center", padding: "60px 0" }}>
             <div
-              key={s.id}
+              style={{
+                width: 56,
+                height: 56,
+                border: "4px solid #e5e7eb",
+                borderTop: "4px solid #2563eb",
+                borderRadius: "50%",
+                margin: "0 auto 20px",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+            <div style={{ color: "#666", fontSize: "1.1rem" }}>Loading subjects...</div>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+          </div>
+        ) : subjectsError ? (
+          <div style={{ textAlign: "center", padding: "60px 0" }}>
+            <div style={{ color: "#ef4444", fontSize: "1.1rem", marginBottom: 12 }}>
+              Failed to load subjects
+            </div>
+            <button
+              onClick={() => refetch()}
+              style={{
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                padding: "10px 20px",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32 }}>
+            {subjects.map((s) => (
+            <div
+              key={s.id || s.docId}
               style={{
                 border: "1px solid #eee",
                 borderRadius: 16,
@@ -102,8 +207,12 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
                 cursor: "pointer",
                 transition: "box-shadow 0.12s",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+                position: "relative",
               }}
-              onClick={() => onSubjectClick(s.id)}
+              onClick={() => {
+                console.log("🖱️ Subject clicked:", s);
+                onSubjectClick(s.id || s.docId);
+              }}
               onMouseOver={(e) =>
                 (e.currentTarget.style.boxShadow = "0 4px 18px rgba(37,99,235,0.08)")
               }
@@ -111,9 +220,45 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
                 (e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.03)")
               }
             >
+              {/* Delete button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteSubject(s.id, s.name, s.lectureIds?.length || 0);
+                }}
+                style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  background: "transparent",
+                  border: "none",
+                  color: "#999",
+                  cursor: "pointer",
+                  fontSize: "1.2rem",
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.15s",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "#fee";
+                  e.currentTarget.style.color = "#ef4444";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "#999";
+                }}
+                title="Delete subject"
+              >
+                ×
+              </button>
+
               <div style={{ fontWeight: 700, fontSize: "1.17rem", marginBottom: 7 }}>{s.name}</div>
               <div style={{ color: "#777", fontWeight: 500, fontSize: "0.97rem" }}>
-                {s.code} · {s.term || "No term"} · {s.recordings || 0} recordings
+                {s.code} · {s.term || "No term"} · {s.lectureIds?.length || 0} {s.lectureIds?.length === 1 ? "lecture" : "lectures"}
               </div>
             </div>
           ))}
@@ -144,7 +289,8 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
             <span style={{ fontSize: "2rem", marginBottom: 4 }}>+</span>
             Add New Subject
           </div>
-        </div>
+          </div>
+        )}
       </section>
 
       {/* --- Add Subject Modal --- */}
@@ -249,6 +395,26 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
           </div>
         </div>
       )}
+
+      {/* Custom Modals */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        danger={confirmModal.danger}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+      />
     </div>
   );
 }
