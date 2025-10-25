@@ -275,12 +275,19 @@ export function ReviewPage() {
 
   const keyTerms = aiContent?.keywords || [];
 
+  // Ensure page-level container allows scrolling when content exceeds viewport
   return (
-    <div id="ll-container" data-page="review" className="mx-auto my-4 max-w-6xl px-3">
+    <div
+      id="ll-container"
+      data-page="review"
+      className="min-h-screen h-screen overflow-auto bg-transparent mx-auto my-4 max-w-6xl px-3 py-6"
+    >
       <div className="grid grid-cols-12 gap-4">
         {/* Left column: transcript */}
         <div className="col-span-8">
-          <h2 className="text-lg font-semibold mb-2">{session?.title || "Lecture Review"}</h2>
+          <h1 className="heading-brand" style={{ fontWeight: 700, fontSize: '2.3rem', marginBottom: 8 }}>
+            {session?.title || "Lecture Review"}
+          </h1>
           <div className="rounded-xl border border-neutral-300 bg-white p-3 shadow-sm min-h-[300px] max-h-[70vh] overflow-auto">
             {(session?.transcriptLines || []).length === 0 ? (
               <div className="flex items-center justify-center h-full text-neutral-500">

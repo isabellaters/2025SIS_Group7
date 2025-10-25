@@ -2,9 +2,10 @@ import React, { useEffect, useRef } from 'react';
 
 interface TranscriptDisplayProps {
   transcriptLines: string[];
-  interimTranscript: string;
-  cursor: number;
-  isDocked: boolean;
+  interimTranscript?: string;
+  cursor?: number;
+  isDocked?: boolean;
+  fontScale?: number;
 }
 
 /**
@@ -15,8 +16,9 @@ interface TranscriptDisplayProps {
 export function TranscriptDisplay({
   transcriptLines,
   interimTranscript,
-  cursor,
-  isDocked
+  cursor = 0,
+  isDocked = true,
+  fontScale = 1,
 }: TranscriptDisplayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -26,6 +28,10 @@ export function TranscriptDisplay({
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [transcriptLines, interimTranscript]);
+
+  const heightClass = isDocked ? "h-32" : "h-64";
+  const baseFontPx = 14;
+  const computedFontSize = `${baseFontPx * fontScale}px`;
 
   const transcriptText = transcriptLines.slice(0, Math.min(cursor, transcriptLines.length)).join("\n") || "";
 
@@ -37,12 +43,20 @@ export function TranscriptDisplay({
   return (
     <div
       ref={containerRef}
-      className={
-        (isDocked ? "h-48" : "h-[60vh]") +
-        " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap"
-      }
+      className={`${heightClass} w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 leading-relaxed text-neutral-800 whitespace-pre-wrap`}
+      style={{ fontSize: computedFontSize }}
     >
-      {displayText}
+      {transcriptLines.map((line, i) => (
+        <div key={i} className="mb-2">
+          {line}
+        </div>
+      ))}
+
+      {interimTranscript && (
+        <div className="text-neutral-500 mt-2">[{interimTranscript}]</div>
+      )}
     </div>
   );
 }
+
+export default TranscriptDisplay;

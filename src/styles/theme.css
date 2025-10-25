@@ -90,4 +90,9 @@
     align-items: center;
     gap: 0.25rem;
   }
+
+  /* Heading helper using the requested colour */
+  .heading-brand {
+    color: var(--brand-800);
+  }
 }

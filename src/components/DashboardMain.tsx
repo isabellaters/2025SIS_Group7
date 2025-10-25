@@ -144,7 +144,7 @@ export default function DashboardMain({ sidebarCollapsed, onSubjectClick }: Dash
           overflowY: "auto",
         }}
       >
-        <h1 style={{ fontWeight: 700, fontSize: "2.3rem", marginBottom: 8 }}>Dashboard</h1>
+        <h1 className="heading-brand"style={{ fontWeight: 700, fontSize: "2.3rem", marginBottom: 8 }}>Dashboard</h1>
         <div style={{ color: "#686868", marginBottom: 38, fontSize: "1.05rem" }}>
           Welcome back, John! Here are your subjects and recent activity.
         </div>
