@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAudioCapture } from '../hooks/useAudioCapture';
+import { useLiveKeywords } from '../hooks/useLiveKeywords';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { TranscriptDisplay } from './TranscriptDisplay';
 import { TransportControls } from './TransportControls';
@@ -34,6 +35,7 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
   const [activeTab, setActiveTab] = React.useState<"Transcription" | "Translation">("Transcription");
   const [title, setTitle] = React.useState<string>("Untitled Session");
   const [displayTranscript, setDisplayTranscript] = React.useState<string[]>(SAMPLE_TRANSCRIPT);
+  const [highlightEnabled, setHighlightEnabled] = React.useState<boolean>(true);
 
   // Use audio capture hook for all audio/transcription functionality
   const {
@@ -50,6 +52,9 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     startCapture,
     stopCapture,
   } = useAudioCapture();
+
+  // Use live keywords hook for keyword extraction and definitions
+  const { keywords, isExtracting, clearKeywords } = useLiveKeywords(displayTranscript, isCapturing);
 
   // Update display transcript when real transcription starts
   React.useEffect(() => {
@@ -100,7 +105,14 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
   useEffect(() => {
     const ui = lsGet(UI_PREF_KEY);
     if (ui) {
-      try { setIsDocked(!!JSON.parse(ui).docked); } catch {}
+      try {
+        const prefs = JSON.parse(ui);
+        setIsDocked(!!prefs.docked);
+        // Restore highlight preference (default to true if not set)
+        if (prefs.highlightEnabled !== undefined) {
+          setHighlightEnabled(prefs.highlightEnabled);
+        }
+      } catch {}
     }
     const saved = lsGet("ll:newMeeting");
     if (saved) {
@@ -130,10 +142,13 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
     }
   }, []);
 
-  // persist dock preference cross-screens
+  // persist dock and highlight preferences cross-screens
   useEffect(() => {
-    lsSet(UI_PREF_KEY, JSON.stringify({ docked: isDocked }));
-  }, [isDocked]);
+    lsSet(UI_PREF_KEY, JSON.stringify({
+      docked: isDocked,
+      highlightEnabled: highlightEnabled
+    }));
+  }, [isDocked, highlightEnabled]);
 
   // Start/stop using the hook’s capture functions (no local isCapturing state)
   const handleToggle = async (): Promise<void> => {
@@ -156,6 +171,7 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
       title: title,
       transcriptLines: displayTranscript.length > 0 ? displayTranscript : transcriptLines,
       translationLines: translationLines,
+      keywords: keywords, // Include detected keywords with definitions
       updatedAt: new Date().toISOString()
     };
 
@@ -188,6 +204,32 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
           {title}
         </div>
         <div className="flex items-center gap-2">
+          {/* Keyword Highlight Toggle */}
+          <button
+            onClick={() => setHighlightEnabled((v) => !v)}
+            className={
+              "flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors " +
+              (highlightEnabled
+                ? "border-yellow-400 bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+                : "border-neutral-300 text-neutral-600 hover:bg-neutral-50")
+            }
+            title={highlightEnabled ? "Disable keyword highlighting" : "Enable keyword highlighting"}
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+              />
+            </svg>
+            Highlight
+          </button>
           <LanguageSelector
             targetLanguage={targetLanguage}
             onLanguageChange={changeTargetLanguage}
@@ -232,12 +274,30 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
       {/* Content */}
       <div className="mt-3">
         {activeTab === "Transcription" ? (
-          <TranscriptDisplay
-            transcriptLines={displayTranscript}
-            interimTranscript={interimTranscript}
-            cursor={displayTranscript.length}
-            isDocked={isDocked}
-          />
+          <>
+            <TranscriptDisplay
+              transcriptLines={displayTranscript}
+              interimTranscript={interimTranscript}
+              cursor={displayTranscript.length}
+              isDocked={isDocked}
+              keywords={keywords}
+              highlightEnabled={highlightEnabled}
+            />
+            {/* Show keyword extraction indicator */}
+            {isExtracting && (
+              <div className="mt-2 text-xs text-neutral-500 flex items-center gap-2">
+                <div className="animate-spin h-3 w-3 border-2 border-sky-500 border-t-transparent rounded-full"></div>
+                Extracting keywords...
+              </div>
+            )}
+            {/* Show keyword count */}
+            {keywords.length > 0 && (
+              <div className="mt-2 text-xs text-neutral-600">
+                {keywords.length} keyword{keywords.length !== 1 ? 's' : ''} detected
+                {highlightEnabled && ' (hover over highlighted words for definitions)'}
+              </div>
+            )}
+          </>
         ) : (
           <div className={(isDocked ? "h-32" : "h-64") + " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap"}>
             {displayText}

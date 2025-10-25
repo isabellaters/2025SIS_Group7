@@ -22,8 +22,18 @@ interface AIGeneratedContent {
   questions: string[];
 }
 
+interface KeywordWithDefinition {
+  term: string;
+  definition: string;
+}
+
 export function ReviewPage() {
-  const [session, setSession] = useState<{ title: string; transcriptLines: string[]; translationLines: string[] } | null>(null);
+  const [session, setSession] = useState<{
+    title: string;
+    transcriptLines: string[];
+    translationLines: string[];
+    keywords?: KeywordWithDefinition[];
+  } | null>(null);
   const [selectedTerm, setSelectedTerm] = useState<string>("");
   const [defs, setDefs] = useState<Record<string, string>>({});
   const [fontScale, setFontScale] = useState<number>(1);
@@ -40,9 +50,18 @@ export function ReviewPage() {
         const sessionData = JSON.parse(s);
         setSession(sessionData);
 
+        // If we have live keywords from the session, pre-populate definitions
+        if (sessionData.keywords && Array.isArray(sessionData.keywords)) {
+          const liveKeywordDefs: Record<string, string> = {};
+          sessionData.keywords.forEach((kw: KeywordWithDefinition) => {
+            liveKeywordDefs[kw.term] = kw.definition;
+          });
+          setDefs(liveKeywordDefs);
+        }
+
         // Automatically generate AI content when session loads
         if (sessionData.transcriptLines && sessionData.transcriptLines.length > 0) {
-          generateAIContent(sessionData.transcriptLines.join("\n"));
+          generateAIContent(sessionData.transcriptLines.join("\n"), sessionData.keywords);
         }
       }
     } catch (e) {
@@ -81,13 +100,13 @@ export function ReviewPage() {
     return hasContent;
   }
 
-  async function generateAIContent(transcript: string) {
+  async function generateAIContent(transcript: string, liveKeywords?: KeywordWithDefinition[]) {
     // Check if transcript is too short
     if (transcript.length < 100) {
       console.log("Transcript too short for AI generation");
       setAiContent({
         summary: "",
-        keywords: [],
+        keywords: liveKeywords ? liveKeywords.map(kw => kw.term) : [],
         keyPoints: [],
         questions: []
       });
@@ -113,16 +132,27 @@ export function ReviewPage() {
         console.log("AI returned invalid or insufficient data");
         setAiContent({
           summary: "",
-          keywords: [],
+          keywords: liveKeywords ? liveKeywords.map(kw => kw.term) : [],
           keyPoints: [],
           questions: []
         });
         return;
       }
 
+      // Merge live keywords with AI-generated keywords (prefer live keywords)
+      let finalKeywords = data.keywords || [];
+      if (liveKeywords && liveKeywords.length > 0) {
+        const liveTerms = liveKeywords.map(kw => kw.term);
+        // Add AI keywords that aren't already in live keywords
+        const additionalKeywords = finalKeywords.filter(
+          (kw: string) => !liveTerms.some(lt => lt.toLowerCase() === kw.toLowerCase())
+        );
+        finalKeywords = [...liveTerms, ...additionalKeywords];
+      }
+
       setAiContent({
         summary: data.summary || "",
-        keywords: data.keywords || [],
+        keywords: finalKeywords,
         keyPoints: data.keyPoints || [],
         questions: data.questions || []
       });
@@ -130,7 +160,7 @@ export function ReviewPage() {
       console.error("Error generating AI content:", error);
       setAiContent({
         summary: "",
-        keywords: [],
+        keywords: liveKeywords ? liveKeywords.map(kw => kw.term) : [],
         keyPoints: [],
         questions: []
       });

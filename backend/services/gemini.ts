@@ -48,6 +48,22 @@ export async function generateQuestions(transcript: string, numQuestions: number
     return result.split(/\n/).map(q => q.trim().replace(/^\d+[\.)]\s*/, '')).filter(q => q.length > 0).slice(0, numQuestions);
 }
 
+export async function extractLiveKeywords(transcript: string): Promise<Array<{ term: string, definition: string }>> {
+    // Extract keywords from live transcript (optimized for shorter text)
+    const prompt = `Extract 3-5 important technical terms or keywords from the following text. For each term, provide a brief 1-sentence definition in the context of the text. Return as JSON array with format: [{"term": "keyword", "definition": "brief definition"}]. Return ONLY valid JSON, no additional text:\n\n${transcript}`;
+
+    try {
+        const result = await callGeminiAPI(prompt);
+        // Try to parse as JSON
+        const cleaned = result.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '');
+        const parsed = JSON.parse(cleaned);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.error('Failed to parse keywords JSON:', error);
+        return [];
+    }
+}
+
 export async function processLectureData(transcript: string) {
     const [summary, keywords, keyPoints, questions] = await Promise.all([
         summarizeLecture(transcript),
