@@ -244,8 +244,13 @@ export function ReviewPage() {
 
   const keyTerms = aiContent?.keywords || [];
 
+  // Ensure page-level container allows scrolling when content exceeds viewport
   return (
-    <div id="ll-container" data-page="review" className="mx-auto my-4 max-w-6xl px-3">
+    <div
+      id="ll-container"
+      data-page="review"
+      className="min-h-screen h-screen overflow-auto bg-transparent mx-auto my-4 max-w-6xl px-3 py-6"
+    >
       <div className="grid grid-cols-12 gap-4">
         {/* Left column: transcript */}
         <div className="col-span-8">

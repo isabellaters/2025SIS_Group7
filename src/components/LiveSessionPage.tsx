@@ -29,7 +29,7 @@ const SAMPLE_TRANSCRIPT = [
   "In conclusion, understanding these fundamental concepts is crucial for becoming a proficient programmer. Practice implementing these data structures and algorithms to solidify your understanding."
 ];
 
-export function LiveSessionPage({ controller }: LiveSessionPageProps) {
+export function LiveSessionPage(props) {
   const [isDocked, setIsDocked] = React.useState<boolean>(true);
   const [activeTab, setActiveTab] = React.useState<"Transcription" | "Translation">("Transcription");
   const [title, setTitle] = React.useState<string>("Untitled Session");
@@ -181,7 +181,11 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
   const tabs = ["Transcription", "Translation"] as const;
 
   return (
-    <div className={containerClasses}>
+    <div
+      id="ll-container"
+      data-page="live"
+      className="min-h-screen h-screen overflow-auto bg-transparent mx-auto my-4 max-w-6xl px-3 py-6"
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex-1 text-sm font-medium text-neutral-700 truncate px-2" title={title}>
