@@ -11,10 +11,6 @@ interface LectureDetailProps {
 
 type Tab = "transcription" | "translation" | "notes";
 
-const mockTranscription = `Welcome to today's lecture on Neural Networks...`;
-const mockTranslation = `Bienvenue à la conférence d'aujourd'hui sur les réseaux de neurones...`;
-const mockNotes = `## Key Concepts\n\n### Perceptron\n- Simplest neural network unit...`;
-
 export default function LectureDetail({
   sidebarCollapsed,
   lectureId,
@@ -23,25 +19,31 @@ export default function LectureDetail({
 }: LectureDetailProps) {
   const [activeTab, setActiveTab] = useState<Tab>("transcription");
   const [lecture, setLecture] = useState<any | null>(null);
+  const [transcript, setTranscript] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ Fetch real lecture from backend
+  // Fetch lecture and transcript
   useEffect(() => {
-    async function fetchLecture() {
+    async function fetchData() {
       try {
-        const res = await axios.get(`http://localhost:3001/api/lectures/${lectureId}`);
-        setLecture(res.data);
+        const lectureRes = await axios.get(`http://localhost:3001/api/lectures/${lectureId}`);
+        const lectureData = lectureRes.data;
+        setLecture(lectureData);
+
+        if (lectureData?.transcriptId) {
+          const transcriptRes = await axios.get(`http://localhost:3001/api/transcripts/${lectureData.transcriptId}`);
+          setTranscript(transcriptRes.data);
+        }
       } catch (err) {
-        console.error("Error fetching lecture:", err);
+        console.error("Error fetching lecture or transcript:", err);
         setLecture(null);
       } finally {
         setIsLoading(false);
       }
     }
-    fetchLecture();
+    fetchData();
   }, [lectureId]);
 
-  // ✅ Handle loading & not found
   if (isLoading) {
     return (
       <div style={{ padding: 48, flex: 1 }}>
@@ -59,7 +61,6 @@ export default function LectureDetail({
     );
   }
 
-  // ✅ Safe date formatter
   function formatDate(date: any): string {
     try {
       const d = new Date(date.seconds ? date.seconds * 1000 : date);
@@ -76,28 +77,29 @@ export default function LectureDetail({
   }
 
   function getTabContent(): string {
-    switch (activeTab) {
-      case "transcription":
-        return mockTranscription;
-      case "translation":
-        return mockTranslation;
-      case "notes":
-        return mockNotes;
+    if (activeTab === "transcription") {
+      return transcript?.text || "No transcription available.";
     }
+    if (activeTab === "translation") {
+      return transcript?.translation || "No translation available.";
+    }
+    if (activeTab === "notes") {
+      return lecture?.notes || "No notes available.";
+    }
+    return "";
   }
 
-  const tabs: { id: Tab; label: string; icon: string }[] = [
-    { id: "transcription", label: "Transcription", icon: "📝" },
-    { id: "translation", label: "Translation", icon: "🌐" },
-    { id: "notes", label: "Notes", icon: "📋" },
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "transcription", label: "Transcription" },
+    { id: "translation", label: "Translation" },
+    { id: "notes", label: "Notes" },
   ];
 
   return (
     <div style={{ display: "flex", height: "100vh", flex: 1 }}>
-      {/* Main content area */}
       <section
         style={{
-          flex: 1,
+          flex: activeTab === "transcription" && lecture?.keywords?.length ? 0.7 : 1,
           background: "#fafafa",
           overflowY: "auto",
           padding: sidebarCollapsed
@@ -106,7 +108,6 @@ export default function LectureDetail({
           transition: "padding 0.2s",
         }}
       >
-        {/* Back button */}
         <button
           onClick={onBack}
           style={{
@@ -127,7 +128,6 @@ export default function LectureDetail({
           Back to Dashboard
         </button>
 
-        {/* Lecture header */}
         <div style={{ marginBottom: 32 }}>
           <div
             style={{
@@ -150,7 +150,6 @@ export default function LectureDetail({
             {lecture.title || "Untitled Lecture"}
           </h1>
 
-          {/* Metadata row */}
           <div
             style={{
               display: "flex",
@@ -175,7 +174,6 @@ export default function LectureDetail({
           </div>
         </div>
 
-        {/* Tabs */}
         <div
           style={{
             display: "flex",
@@ -207,13 +205,11 @@ export default function LectureDetail({
                 gap: 8,
               }}
             >
-              <span>{tab.icon}</span>
               {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Content area */}
         <div
           style={{
             background: "#fff",
@@ -231,6 +227,82 @@ export default function LectureDetail({
           {getTabContent()}
         </div>
       </section>
+
+      {activeTab === "transcription" && lecture?.keywords?.length > 0 && (
+        <aside
+          style={{
+            flex: 0.3,
+            background: "#fff",
+            borderLeft: "1px solid #e5e5e5",
+            padding: "48px 32px",
+            overflowY: "auto",
+          }}
+        >
+          <div style={{ marginBottom: 48 }}>
+            <h3
+              style={{
+                fontWeight: 700,
+                fontSize: "1.25rem",
+                marginBottom: 16,
+                color: "#111",
+              }}
+            >
+              Glossary
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {lecture.keywords.map((item: any, i: number) => (
+                <div key={i}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      color: "#2563eb",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {item.term}
+                  </div>
+                  <div
+                    style={{
+                      color: "#444",
+                      fontSize: "0.95rem",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {item.definition}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {lecture.timestamps && lecture.timestamps.length > 0 && (
+            <div>
+              <h3
+                style={{
+                  fontWeight: 700,
+                  fontSize: "1.25rem",
+                  marginBottom: 16,
+                  color: "#111",
+                }}
+              >
+                Key Timestamps
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {lecture.timestamps.map((t: any, i: number) => (
+                  <div key={i} style={{ display: "flex", gap: 12 }}>
+                    <div style={{ color: "#2563eb", fontWeight: 600, minWidth: 50 }}>
+                      {t.time}
+                    </div>
+                    <div style={{ color: "#444", fontSize: "0.95rem" }}>
+                      {t.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </aside>
+      )}
     </div>
   );
 }
