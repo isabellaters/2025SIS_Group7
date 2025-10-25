@@ -154,6 +154,24 @@ app.post('/api/definition', async (req, res) => {
   }
 });
 
+// Live Keywords Extraction
+app.post('/api/live-keywords', async (req, res) => {
+  const { transcript } = req.body;
+
+  if (!transcript) {
+    return res.status(400).json({ error: "Transcript is required" });
+  }
+
+  try {
+    const { extractLiveKeywords } = await import('./services/gemini');
+    const keywords = await extractLiveKeywords(transcript);
+    res.json({ keywords });
+  } catch (err: any) {
+    console.error('Error extracting live keywords:', err);
+    res.status(500).json({ error: "Failed to extract keywords" });
+  }
+});
+
 
 //Transcript
 
