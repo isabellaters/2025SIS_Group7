@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState} from 'react';
 import { useAudioCapture } from '../hooks/useAudioCapture';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
 import { TranscriptDisplay } from './TranscriptDisplay';
@@ -34,6 +34,8 @@ export function LiveSessionPage() {
   const [activeTab, setActiveTab] = React.useState<"Transcription" | "Translation">("Transcription");
   const [title, setTitle] = React.useState<string>("Untitled Session");
   const [displayTranscript, setDisplayTranscript] = React.useState<string[]>(SAMPLE_TRANSCRIPT);
+  const [fontScale, setFontScale] = useState<number>(1);
+  
 
   // Use audio capture hook for all audio/transcription functionality
   const {
@@ -243,12 +245,21 @@ export function LiveSessionPage() {
             interimTranscript={interimTranscript}
             cursor={displayTranscript.length}
             isDocked={isDocked}
+            fontScale={fontScale}
           />
         ) : (
-          <div className={(isDocked ? "h-32" : "h-64") + " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap"}>
+          <div
+            className={(isDocked ? "h-32" : "h-64") + " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 leading-relaxed text-neutral-800 whitespace-pre-wrap"}
+            style={{ fontSize: `${14 * fontScale}px` }}
+          >
             {displayText}
           </div>
         )}
+      </div>
+
+      <div className="mt-2 flex items-center gap-3">
+          <button className="rounded border px-2 py-1 text-sm" onClick={() => setFontScale((s) => Math.min(1.4, +(s + 0.1).toFixed(2)))}>A+</button>
+          <button className="rounded border px-2 py-1 text-sm" onClick={() => setFontScale((s) => Math.max(0.8, +(s - 0.1).toFixed(2)))}>A-</button>
       </div>
 
       {/* Transport controls */}
