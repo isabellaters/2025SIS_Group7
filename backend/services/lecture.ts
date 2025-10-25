@@ -1,7 +1,35 @@
 
-import type { Transcript, Lecture } from "../../src/types/index";
 import { db } from "./firebase";
 import admin from 'firebase-admin';
+
+// Backend-local types to avoid incompatible Timestamp definitions between
+// firebase-admin and the front-end Firestore client types.
+type AdminTimestamp = admin.firestore.Timestamp;
+interface Transcript {
+  id?: string;
+  text: string;
+  translation?: string;
+  translationLanguage?: string;
+  duration?: number;
+  createdAt?: AdminTimestamp | any;
+  updatedAt?: AdminTimestamp | any;
+  status?: string;
+}
+
+interface Lecture {
+  id?: string;
+  title: string;
+  subjectId?: string;
+  courseId?: string;
+  transcriptId: string;
+  summary?: string;
+  keywords?: string[];
+  questions?: string[];
+  createdAt?: AdminTimestamp | any;
+  updatedAt?: AdminTimestamp | any;
+  userId?: string;
+  status?: string;
+}
 
 const TRANSCRIPTS_COLLECTION = "transcripts";
 const LECTURES_COLLECTION = "lectures";

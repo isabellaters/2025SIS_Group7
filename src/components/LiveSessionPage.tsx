@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState} from 'react';
 import { useAudioCapture } from '../hooks/useAudioCapture';
 import { useLiveKeywords } from '../hooks/useLiveKeywords';
 import { AudioLevelIndicator } from './AudioLevelIndicator';
@@ -30,11 +30,13 @@ const SAMPLE_TRANSCRIPT = [
   "In conclusion, understanding these fundamental concepts is crucial for becoming a proficient programmer. Practice implementing these data structures and algorithms to solidify your understanding."
 ];
 
-export function LiveSessionPage({ controller }: LiveSessionPageProps) {
+export function LiveSessionPage() {
   const [isDocked, setIsDocked] = React.useState<boolean>(true);
   const [activeTab, setActiveTab] = React.useState<"Transcription" | "Translation">("Transcription");
   const [title, setTitle] = React.useState<string>("Untitled Session");
   const [displayTranscript, setDisplayTranscript] = React.useState<string[]>(SAMPLE_TRANSCRIPT);
+  const [fontScale, setFontScale] = useState<number>(1);
+  
   const [highlightEnabled, setHighlightEnabled] = React.useState<boolean>(true);
 
   // Use audio capture hook for all audio/transcription functionality
@@ -197,12 +199,18 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
   const tabs = ["Transcription", "Translation"] as const;
 
   return (
-    <div className={containerClasses}>
+    <div
+      id="ll-container"
+      data-page="live"
+      className="min-h-screen h-screen overflow-auto bg-transparent mx-auto my-4 max-w-6xl px-3 py-6"
+    >
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 cursor-default">
+      <div className="flex items-center justify-between">
         <div className="flex-1 text-sm font-medium text-neutral-700 truncate px-2" title={title}>
-          {title}
-        </div>
+          <h1 className="heading-brand" style={{ fontWeight: 700, fontSize: '2.3rem', marginBottom: 8 }}>
+            {title || "Live Session"}
+          </h1>
+         </div>
         <div className="flex items-center gap-2">
           {/* Keyword Highlight Toggle */}
           <button
@@ -280,6 +288,7 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
               interimTranscript={interimTranscript}
               cursor={displayTranscript.length}
               isDocked={isDocked}
+              fontScale={fontScale}
               keywords={keywords}
               highlightEnabled={highlightEnabled}
             />
@@ -299,10 +308,18 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
             )}
           </>
         ) : (
-          <div className={(isDocked ? "h-32" : "h-64") + " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap"}>
+          <div
+            className={(isDocked ? "h-32" : "h-64") + " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 leading-relaxed text-neutral-800 whitespace-pre-wrap"}
+            style={{ fontSize: `${14 * fontScale}px` }}
+          >
             {displayText}
           </div>
         )}
+      </div>
+
+      <div className="mt-2 flex items-center gap-3">
+          <button className="rounded border px-2 py-1 text-sm" onClick={() => setFontScale((s) => Math.min(1.4, +(s + 0.1).toFixed(2)))}>A+</button>
+          <button className="rounded border px-2 py-1 text-sm" onClick={() => setFontScale((s) => Math.max(0.8, +(s - 0.1).toFixed(2)))}>A-</button>
       </div>
 
       {/* Transport controls */}

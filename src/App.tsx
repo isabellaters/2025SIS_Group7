@@ -122,7 +122,8 @@ export default function App() {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(x => !x)}
-        onNewRecording={openNewMeetingModal} 
+        onNewRecording={openNewMeetingModal}
+        onDashboardClick={navigateToDashboard}
       />
       {renderScreen()}
       

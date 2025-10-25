@@ -7,11 +7,12 @@ export interface KeywordWithDefinition {
 
 interface TranscriptDisplayProps {
   transcriptLines: string[];
-  interimTranscript: string;
-  cursor: number;
-  isDocked: boolean;
+  interimTranscript?: string;
+  cursor?: number;
+  isDocked?: boolean;
   keywords?: KeywordWithDefinition[];
   highlightEnabled?: boolean;
+  fontScale?: number;
 }
 
 /**
@@ -22,11 +23,12 @@ interface TranscriptDisplayProps {
  */
 export function TranscriptDisplay({
   transcriptLines,
-  interimTranscript,
-  cursor,
-  isDocked,
+  interimTranscript = '',
+  cursor = 0,
+  isDocked = true,
   keywords = [],
-  highlightEnabled = true
+  highlightEnabled = true,
+  fontScale = 1,
 }: TranscriptDisplayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredKeyword, setHoveredKeyword] = useState<KeywordWithDefinition | null>(null);
@@ -38,6 +40,10 @@ export function TranscriptDisplay({
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [transcriptLines, interimTranscript]);
+
+  const heightClass = isDocked ? "h-32" : "h-64";
+  const baseFontPx = 14;
+  const computedFontSize = `${baseFontPx * fontScale}px`;
 
   const transcriptText = transcriptLines.slice(0, Math.min(cursor, transcriptLines.length)).join("\n") || "";
 
@@ -116,8 +122,9 @@ export function TranscriptDisplay({
         ref={containerRef}
         className={
           (isDocked ? "h-48" : "h-[60vh]") +
-          " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap"
+          " w-full overflow-auto rounded-lg border border-neutral-200 bg-white p-3 leading-relaxed text-neutral-800 whitespace-pre-wrap"
         }
+        style={{ fontSize: computedFontSize }}
       >
         {highlightKeywords(displayText)}
       </div>
@@ -138,3 +145,5 @@ export function TranscriptDisplay({
     </>
   );
 }
+
+export default TranscriptDisplay;
