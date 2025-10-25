@@ -7,7 +7,7 @@
   --brand-500: #349beb;
   --brand-600: #2a87c9;
   --brand-700: #206aa6;
-  --brand-800: #194f80;
+  --brand-800: #194f80; /* target colour */
   --brand-900: #123659;
 
   --brand-contrast: #ffffff;
@@ -89,5 +89,10 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+  }
+
+  /* Heading helper using the requested colour */
+  .heading-brand {
+    color: var(--brand-800);
   }
 }

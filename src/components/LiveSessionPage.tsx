@@ -183,10 +183,12 @@ export function LiveSessionPage({ controller }: LiveSessionPageProps) {
   return (
     <div className={containerClasses}>
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 cursor-default">
+      <div className="flex items-center justify-between">
         <div className="flex-1 text-sm font-medium text-neutral-700 truncate px-2" title={title}>
-          {title}
-        </div>
+          <h1 className="heading-brand" style={{ fontWeight: 700, fontSize: '2.3rem', marginBottom: 8 }}>
+            {title || "Live Session"}
+          </h1>
+         </div>
         <div className="flex items-center gap-2">
           <LanguageSelector
             targetLanguage={targetLanguage}
