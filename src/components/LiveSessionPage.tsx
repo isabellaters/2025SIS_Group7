@@ -29,7 +29,7 @@ const SAMPLE_TRANSCRIPT = [
   "In conclusion, understanding these fundamental concepts is crucial for becoming a proficient programmer. Practice implementing these data structures and algorithms to solidify your understanding."
 ];
 
-export function LiveSessionPage(props) {
+export function LiveSessionPage() {
   const [isDocked, setIsDocked] = React.useState<boolean>(true);
   const [activeTab, setActiveTab] = React.useState<"Transcription" | "Translation">("Transcription");
   const [title, setTitle] = React.useState<string>("Untitled Session");
