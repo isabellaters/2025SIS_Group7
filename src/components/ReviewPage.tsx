@@ -204,6 +204,30 @@ export function ReviewPage() {
         savedAt: new Date().toISOString()
       }));
 
+      // ✅ Get subjectId from NewMeeting session data
+      let subjectId: string | undefined;
+      try {
+        const newMeetingData = localStorage.getItem("ll:newMeeting");
+        if (newMeetingData) {
+          const parsed = JSON.parse(newMeetingData);
+          subjectId = parsed.subjectId || undefined;
+        }
+      } catch (err) {
+        console.log("No subject selected for this lecture");
+      }
+
+      // ✅ If no subject, fetch Miscellaneous subject
+      if (!subjectId) {
+        try {
+          const miscRes = await fetch("http://localhost:3001/subjects/misc/get-or-create");
+          const miscSubject = await miscRes.json();
+          subjectId = miscSubject.id;
+          console.log("Using Miscellaneous subject:", subjectId);
+        } catch (err) {
+          console.error("Failed to get Miscellaneous subject:", err);
+        }
+      }
+
       // Save to Firebase
       const transcriptText = session.transcriptLines.join("\n");
       const translationText = session.translationLines.join("\n");
@@ -222,14 +246,21 @@ export function ReviewPage() {
         .map(term => `${term}: ${defs[term]}`);
 
       // Create the lecture with all AI-generated review data
-      await LectureService.createLecture({
+      const lectureData: any = {
         title: session.title,
         transcriptId: transcriptId,
         summary: aiContent.summary || undefined,
         keywords: keywordsWithDefs.length > 0 ? keywordsWithDefs : aiContent.keywords,
         questions: aiContent.questions.length > 0 ? aiContent.questions : undefined,
         status: "completed",
-      });
+      };
+
+      // ✅ Add subjectId if available
+      if (subjectId) {
+        lectureData.subjectId = subjectId;
+      }
+
+      await LectureService.createLecture(lectureData);
 
       setSaveStatus("Saved successfully!");
       setTimeout(() => {

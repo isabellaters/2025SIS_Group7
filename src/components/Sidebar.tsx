@@ -4,10 +4,11 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onNewRecording?: () => void;
-    onImportFile?: (file: File) => void;
+  onImportFile?: (file: File) => void;
+  onDashboardClick?: () => void;
 }
 
-export default function Sidebar({ collapsed, onToggle, onNewRecording, onImportFile }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onNewRecording, onImportFile, onDashboardClick }: SidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const collapsedWidth = 60;
   const expandedWidth = 260;
@@ -183,7 +184,8 @@ export default function Sidebar({ collapsed, onToggle, onNewRecording, onImportF
             flexDirection: 'column',
           }}
         >
-          <div
+          <button
+            onClick={onDashboardClick}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -194,10 +196,16 @@ export default function Sidebar({ collapsed, onToggle, onNewRecording, onImportF
               fontSize: '1.05rem',
               padding: '12px 13px',
               justifyContent: 'center',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              width: '100%',
             }}
+            onMouseOver={(e) => (e.currentTarget.style.background = '#bae6fd')}
+            onMouseOut={(e) => (e.currentTarget.style.background = '#e0f2fe')}
           >
             Dashboard
-          </div>
+          </button>
         </div>
       </div>
     </aside>

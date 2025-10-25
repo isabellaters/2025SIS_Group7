@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { error } from 'console';
 import { processLectureData } from './services/gemini';
 import { LectureService } from './services/lecture';
 import { SpeechToTextService } from './services/speech-to-text';
@@ -42,6 +41,74 @@ app.get("/subjects", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch subjects" });
+  }
+});
+
+// Get single subject by ID
+app.get("/subjects/:id", async (req, res) => {
+  try {
+    const subject = await SubjectService.getSubjectById(req.params.id);
+    if (!subject) {
+      return res.status(404).json({ error: "Subject not found" });
+    }
+    res.status(200).json(subject);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch subject" });
+  }
+});
+
+// Get or create miscellaneous subject
+app.get("/subjects/misc/get-or-create", async (req, res) => {
+  try {
+    const miscSubject = await SubjectService.getMiscellaneousSubject();
+    res.status(200).json(miscSubject);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to get miscellaneous subject" });
+  }
+});
+
+// Delete subject (and optionally its lectures)
+app.delete("/subjects/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await SubjectService.deleteSubject(id, true); // Always delete lectures
+    res.status(200).json({
+      message: "Subject deleted successfully",
+      deletedLectures: result.deletedLectures
+    });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message || "Failed to delete subject" });
+  }
+});
+
+// Move lecture to different subject
+app.patch("/lectures/:lectureId/move", async (req, res) => {
+  try {
+    const { lectureId } = req.params;
+    const { fromSubjectId, toSubjectId } = req.body;
+
+    if (!toSubjectId) {
+      return res.status(400).json({ error: "toSubjectId is required" });
+    }
+
+    // Update lecture's subjectId
+    await LectureService.updateLecture(lectureId, { subjectId: toSubjectId });
+
+    // Remove from old subject's lectureIds if provided
+    if (fromSubjectId) {
+      await SubjectService.removeLectureFromSubject(fromSubjectId, lectureId);
+    }
+
+    // Add to new subject's lectureIds
+    await SubjectService.addLectureToSubject(toSubjectId, lectureId);
+
+    res.status(200).json({ message: "Lecture moved successfully" });
+  } catch (err: any) {
+    console.error("Error moving lecture:", err);
+    res.status(500).json({ error: err.message || "Failed to move lecture" });
   }
 });
 
@@ -243,10 +310,10 @@ httpServer.listen(PORT, () => {
   console.log(`Socket.IO server ready for real-time transcription`);
 });
 
-// Lecture 
+// Lecture
 app.post("/api/lectures", async (req, res) => {
   try {
-    const { title, transcriptId, subjectId, status } = req.body;
+    const { title, transcriptId, subjectId, status, summary, keywords, questions } = req.body;
 
     // ✅ Ensure subjectId exists
     if (!subjectId) {
@@ -256,14 +323,21 @@ app.post("/api/lectures", async (req, res) => {
     const lectureData = {
       title: title || "Untitled Lecture",
       transcriptId: transcriptId || null,
-      subjectId, // ✅ This is the key addition
+      subjectId,
       status: status || "completed",
+      summary,
+      keywords,
+      questions,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    const id = await LectureService.createLecture(lectureData);
-    res.json({ id });
+    const lectureId = await LectureService.createLecture(lectureData);
+
+    // ✅ Add lecture ID to subject's lectureIds array
+    await SubjectService.addLectureToSubject(subjectId, lectureId);
+
+    res.json({ id: lectureId });
   } catch (err) {
     console.error("Error creating lecture:", err);
     res.status(500).json({ error: "Failed to create lecture" });
@@ -307,7 +381,7 @@ app.patch("/api/lectures/:id", async (req, res) => {
 // Save lecture with transcript
 app.post("/api/lectures/save", async (req, res) => {
   try {
-    const { title, transcript, translation, translationLanguage } = req.body;
+    const { title, transcript, translation, translationLanguage, subjectId, summary, keywords, questions } = req.body;
 
     if (!title || !transcript) {
       return res.status(400).json({ error: "Title and transcript are required" });
@@ -330,11 +404,24 @@ app.post("/api/lectures/save", async (req, res) => {
     const transcriptId = await LectureService.createTranscript(transcriptData);
 
     // Create lecture with reference to transcript
-    const lectureId = await LectureService.createLecture({
+    const lectureData: any = {
       title,
       transcriptId,
       status: 'completed'
-    });
+    };
+
+    // Add optional fields
+    if (subjectId) lectureData.subjectId = subjectId;
+    if (summary) lectureData.summary = summary;
+    if (keywords) lectureData.keywords = keywords;
+    if (questions) lectureData.questions = questions;
+
+    const lectureId = await LectureService.createLecture(lectureData);
+
+    // ✅ If subjectId provided, add lecture to subject
+    if (subjectId) {
+      await SubjectService.addLectureToSubject(subjectId, lectureId);
+    }
 
     res.json({
       success: true,
