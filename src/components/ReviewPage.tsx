@@ -346,7 +346,7 @@ export function ReviewPage() {
 
           {/* Action buttons */}
           <div className="mt-4 flex justify-between items-center">
-            <button onClick={() => { window.location.hash = "#/live"; }} className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50">
+            <button onClick={() => { window.location.hash = "#/live"; }} className="rounded-md bg-sky-500 text-white px-4 py-2 text-sm hover:bg-sky-600">
               Back to Live
             </button>
             <div className="flex gap-2 items-center">
@@ -355,7 +355,7 @@ export function ReviewPage() {
                   {saveStatus}
                 </div>
               )}
-              <button
+              {/* <button
                 onClick={async () => {
                   // Save current data before starting new meeting
                   if (session && aiContent) {
@@ -367,11 +367,11 @@ export function ReviewPage() {
                 className="rounded-md bg-sky-500 text-white px-4 py-2 text-sm hover:bg-sky-600"
               >
                 New Meeting
-              </button>
+              </button> */}
               <button
                 onClick={handleSaveAndExit}
                 disabled={isSaving || isGenerating}
-                className={`rounded-md bg-sky-600 text-white px-3 py-2 text-sm hover:bg-sky-700 ${(isSaving || isGenerating) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`rounded-md bg-sky-600 text-white px-4 py-2 text-sm hover:bg-sky-700 ${(isSaving || isGenerating) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 title="Save this review and go to Dashboard"
               >
                 {isSaving ? "Saving..." : "Save & Exit"}
