@@ -396,6 +396,17 @@ app.patch("/api/lectures/:id", async (req, res) => {
   }
 });
 
+// Delete lecture
+app.delete("/api/lectures/:id", async (req, res) => {
+  try {
+    await LectureService.deleteLecture(req.params.id);
+    res.json({ success: true, message: "Lecture deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete lecture" });
+  }
+});
+
 // Save lecture with transcript
 app.post("/api/lectures/save", async (req, res) => {
   try {

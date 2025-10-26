@@ -19,6 +19,10 @@ let subjectsCache: Subject[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 30000; // 30 seconds
 
+// Event listeners for cache invalidation
+type CacheInvalidationListener = () => void;
+const cacheInvalidationListeners: Set<CacheInvalidationListener> = new Set();
+
 /**
  * Hook to fetch all subjects with caching
  */
@@ -59,6 +63,17 @@ export function useSubjects() {
 
   useEffect(() => {
     fetchSubjects();
+
+    // Register listener for cache invalidation
+    const listener = () => {
+      fetchSubjects(true);
+    };
+    cacheInvalidationListeners.add(listener);
+
+    // Cleanup: remove listener when component unmounts
+    return () => {
+      cacheInvalidationListeners.delete(listener);
+    };
   }, [fetchSubjects]);
 
   return {
@@ -122,9 +137,12 @@ export function useSubject(subjectId: string | null) {
 }
 
 /**
- * Invalidate the subjects cache (call after creating/updating subjects)
+ * Invalidate the subjects cache and notify all listeners to refetch
  */
 export function invalidateSubjectsCache() {
   subjectsCache = null;
   cacheTimestamp = 0;
+
+  // Notify all listeners to refetch
+  cacheInvalidationListeners.forEach(listener => listener());
 }

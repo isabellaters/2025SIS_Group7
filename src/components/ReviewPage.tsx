@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { LectureService } from "../apis/lecture";
 import { API_BASE_URL } from "../apis/config";
+import { invalidateSubjectsCache } from "../hooks/useSubjects";
 
 /** LocalStorage keys (shared with the rest of the app) */
 const SESSION_KEY = "ll:session"; // { title, transcriptLines, translationLines, updatedAt }
@@ -223,9 +224,46 @@ export function ReviewPage() {
     }
 
     setIsSaving(true);
-    setSaveStatus("Saving...");
+    setSaveStatus("Generating definitions...");
 
     try {
+      // Generate definitions for all keywords that don't have them yet
+      const context = session.transcriptLines.join("\n");
+      const missingDefs = aiContent.keywords.filter(term => !defs[term] || !defs[term].trim());
+
+      let updatedDefs = { ...defs };
+
+      if (missingDefs.length > 0) {
+        console.log(`Generating ${missingDefs.length} missing definitions...`);
+
+        // Generate all missing definitions in parallel
+        const defPromises = missingDefs.map(term =>
+          fetch(`${API_BASE_URL}/definition`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ term, context }),
+          })
+          .then(res => res.json())
+          .then(data => {
+            const definition = data.definition?.trim() || "Definition not available";
+            console.log(`Generated definition for "${term}": ${definition.substring(0, 50)}...`);
+            return { term, definition };
+          })
+          .catch(err => {
+            console.error(`Error generating definition for ${term}:`, err);
+            return { term, definition: "Definition not available" };
+          })
+        );
+
+        const newDefs = await Promise.all(defPromises);
+        newDefs.forEach(({ term, definition }) => {
+          updatedDefs[term] = definition;
+        });
+        setDefs(updatedDefs);
+      }
+
+      setSaveStatus("Saving...");
+
       // Save to localStorage first
       const toSave = { ...session, updatedAt: new Date().toISOString() };
       localStorage.setItem(SESSION_KEY, JSON.stringify(toSave));
@@ -270,17 +308,27 @@ export function ReviewPage() {
         status: "completed",
       });
 
-      // Prepare keywords from AI-generated keywords and their definitions
-      const keywordsWithDefs = aiContent.keywords
-        .filter(term => defs[term])
-        .map(term => `${term}: ${defs[term]}`);
+      // Prepare keywords with definitions
+      // Use updatedDefs to ensure we have the latest generated definitions
+      const keywordsWithDefs = aiContent.keywords.map(term => {
+        const definition = updatedDefs[term];
+        if (definition && definition.trim()) {
+          return `${term}: ${definition}`;
+        }
+        // If no definition available, save just the term (this should rarely happen now)
+        console.warn(`No definition found for keyword: ${term}`);
+        return term;
+      });
+
+      console.log(`Saving ${keywordsWithDefs.length} keywords with definitions`);
 
       // Create the lecture with all AI-generated review data
       const lectureData: any = {
         title: session.title,
         transcriptId: transcriptId,
         summary: aiContent.summary || undefined,
-        keywords: keywordsWithDefs.length > 0 ? keywordsWithDefs : aiContent.keywords,
+        keywords: keywordsWithDefs.length > 0 ? keywordsWithDefs : undefined,
+        keyPoints: aiContent.keyPoints.length > 0 ? aiContent.keyPoints : undefined,
         questions: aiContent.questions.length > 0 ? aiContent.questions : undefined,
         status: "completed",
       };
@@ -291,6 +339,9 @@ export function ReviewPage() {
       }
 
       await LectureService.createLecture(lectureData);
+
+      // Invalidate subjects cache to update lecture count on main dashboard
+      invalidateSubjectsCache();
 
       setSaveStatus("Saved successfully!");
       setTimeout(() => {
