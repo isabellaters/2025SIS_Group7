@@ -80,5 +80,19 @@ export class LectureService {
       throw err;
     }
   }
+
+  static async deleteLecture(id: string): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/lectures/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete lecture");
+      }
+    } catch (err) {
+      console.error("Error deleting lecture:", err);
+      throw err;
+    }
+  }
 }
 // }

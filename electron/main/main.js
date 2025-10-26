@@ -1,14 +1,28 @@
 // electron/main/main.js
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, screen, ipcMain, desktopCapturer } = require("electron");
+
+// Safely import electron
+let app, BrowserWindow, screen, ipcMain, desktopCapturer;
+try {
+  const electron = require("electron");
+  app = electron.app;
+  BrowserWindow = electron.BrowserWindow;
+  screen = electron.screen;
+  ipcMain = electron.ipcMain;
+  desktopCapturer = electron.desktopCapturer;
+} catch (error) {
+  console.error("Failed to load Electron:", error);
+  process.exit(1);
+}
 
 let win = null;
-const isDev = !app.isPackaged;
 
 /** Create the single app window */
 function createWindow() {
   if (win && !win.isDestroyed()) return;
+
+  const isDev = !app.isPackaged;
 
   // Default window size - reasonable dimensions for the app
   const { workArea } = screen.getPrimaryDisplay();
@@ -57,6 +71,11 @@ function createWindow() {
     // `hash: '/'` ensures we land on your app's root
     win.loadFile(indexHtml, { hash: "/" });
   }
+}
+
+if (!app) {
+  console.error("Electron app is not available");
+  process.exit(1);
 }
 
 /** Keep a single instance only */

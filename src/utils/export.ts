@@ -6,16 +6,43 @@ export interface ExportData {
   translationLines: string[];
   title: string;
   timestamp: string;
+  summary?: string;
+  keywords?: string[];
+  keyPoints?: string[];
 }
 
 export function generateTXTContent(data: ExportData): string {
-  const { transcriptLines, translationLines, title, timestamp } = data;
-  
+  const { transcriptLines, translationLines, title, timestamp, summary, keywords, keyPoints } = data;
+
   let content = `LiveLecture Export\n`;
   content += `Title: ${title}\n`;
   content += `Exported: ${timestamp}\n`;
   content += `\n${'='.repeat(50)}\n\n`;
-  
+
+  if (summary) {
+    content += `SUMMARY:\n`;
+    content += `${'-'.repeat(20)}\n`;
+    content += `${summary}\n\n`;
+  }
+
+  if (keyPoints && keyPoints.length > 0) {
+    content += `KEY POINTS:\n`;
+    content += `${'-'.repeat(20)}\n`;
+    keyPoints.forEach((point) => {
+      content += `• ${point}\n`;
+    });
+    content += `\n`;
+  }
+
+  if (keywords && keywords.length > 0) {
+    content += `KEYWORDS:\n`;
+    content += `${'-'.repeat(20)}\n`;
+    keywords.forEach((keyword) => {
+      content += `• ${keyword}\n`;
+    });
+    content += `\n`;
+  }
+
   if (transcriptLines.length > 0) {
     content += `TRANSCRIPTION:\n`;
     content += `${'-'.repeat(20)}\n`;
@@ -24,7 +51,7 @@ export function generateTXTContent(data: ExportData): string {
     });
     content += `\n`;
   }
-  
+
   if (translationLines.length > 0) {
     content += `TRANSLATION:\n`;
     content += `${'-'.repeat(20)}\n`;
@@ -32,31 +59,110 @@ export function generateTXTContent(data: ExportData): string {
       content += `${index + 1}. ${line}\n`;
     });
   }
-  
+
   return content;
 }
 
 export function generatePDFContent(data: ExportData): jsPDF {
-  const { transcriptLines, translationLines, title, timestamp } = data;
-  
+  const { transcriptLines, translationLines, title, timestamp, summary, keywords, keyPoints } = data;
+
   // Create new PDF document
   const doc = new jsPDF();
-  
+
   // Set up fonts and colors
   const primaryColor = '#2c3e50';
   const secondaryColor = '#3498db';
-  
+
   // Add title
   doc.setFontSize(20);
   doc.setTextColor(primaryColor);
   doc.text(title, 20, 30);
-  
+
   // Add timestamp
   doc.setFontSize(12);
   doc.setTextColor(100);
   doc.text(`Exported: ${timestamp}`, 20, 40);
-  
+
   let yPosition = 60;
+
+  // Add summary section
+  if (summary) {
+    doc.setFontSize(16);
+    doc.setTextColor(primaryColor);
+    doc.text('SUMMARY', 20, yPosition);
+
+    doc.setDrawColor(secondaryColor);
+    doc.line(20, yPosition + 2, 190, yPosition + 2);
+    yPosition += 15;
+
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+
+    const splitSummary = doc.splitTextToSize(summary, 170);
+    doc.text(splitSummary, 25, yPosition);
+    yPosition += splitSummary.length * 5 + 15;
+  }
+
+  // Add key points section
+  if (keyPoints && keyPoints.length > 0) {
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(16);
+    doc.setTextColor(primaryColor);
+    doc.text('KEY POINTS', 20, yPosition);
+
+    doc.setDrawColor(secondaryColor);
+    doc.line(20, yPosition + 2, 190, yPosition + 2);
+    yPosition += 15;
+
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+
+    keyPoints.forEach((point) => {
+      if (yPosition > 280) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      const splitPoint = doc.splitTextToSize(`• ${point}`, 170);
+      doc.text(splitPoint, 25, yPosition);
+      yPosition += splitPoint.length * 5 + 3;
+    });
+
+    yPosition += 10;
+  }
+
+  // Add keywords section
+  if (keywords && keywords.length > 0) {
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(16);
+    doc.setTextColor(primaryColor);
+    doc.text('KEYWORDS', 20, yPosition);
+
+    doc.setDrawColor(secondaryColor);
+    doc.line(20, yPosition + 2, 190, yPosition + 2);
+    yPosition += 15;
+
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+
+    keywords.forEach((keyword) => {
+      if (yPosition > 280) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      doc.text(`• ${keyword}`, 25, yPosition);
+      yPosition += 7;
+    });
+
+    yPosition += 10;
+  }
   
   // Add transcription section
   if (transcriptLines.length > 0) {

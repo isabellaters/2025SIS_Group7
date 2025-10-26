@@ -24,7 +24,9 @@ interface Lecture {
   transcriptId: string;
   summary?: string;
   keywords?: string[];
+  keyPoints?: string[];
   questions?: string[];
+  notes?: string;
   createdAt?: AdminTimestamp | any;
   updatedAt?: AdminTimestamp | any;
   userId?: string;
@@ -111,6 +113,16 @@ export class LectureService {
       await docRef.update({ ...data, updatedAt: admin.firestore.Timestamp.now() });
     } catch (err) {
       console.error("Error updating lecture:", err);
+      throw err;
+    }
+  }
+
+  static async deleteLecture(id: string): Promise<void> {
+    try {
+      const docRef = db.collection(LECTURES_COLLECTION).doc(id);
+      await docRef.delete();
+    } catch (err) {
+      console.error("Error deleting lecture:", err);
       throw err;
     }
   }

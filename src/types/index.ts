@@ -19,7 +19,9 @@ export interface Lecture {
     transcriptId: string;  // Reference to transcript
     summary?: string;
     keywords?: string[];
+    keyPoints?: string[];
     questions?: string[];
+    notes?: string;
     createdAt: Timestamp;
     updatedAt: Timestamp;
     userId?: string;
