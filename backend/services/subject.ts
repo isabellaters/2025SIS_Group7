@@ -134,4 +134,99 @@ export class SubjectService {
       throw err;
     }
   }
+
+  /**
+   * Sync all subjects' lectureIds arrays with actual lectures in the database
+   * This fixes any data inconsistencies
+   */
+  static async syncAllSubjectLectureCounts(): Promise<{
+    fixed: number;
+    details: Array<{ subjectId: string; name: string; oldCount: number; newCount: number }>
+  }> {
+    try {
+      const details: Array<{ subjectId: string; name: string; oldCount: number; newCount: number }> = [];
+      let fixed = 0;
+
+      // Get all subjects
+      const subjectsSnap = await db.collection(SUBJECTS_COLLECTION).get();
+
+      // Get all lectures
+      const lecturesSnap = await db.collection("lectures").get();
+      const lecturesBySubject = new Map<string, string[]>();
+
+      // Group lectures by subjectId
+      lecturesSnap.docs.forEach((doc) => {
+        const data = doc.data();
+        const subjectId = data.subjectId;
+        if (subjectId) {
+          if (!lecturesBySubject.has(subjectId)) {
+            lecturesBySubject.set(subjectId, []);
+          }
+          lecturesBySubject.get(subjectId)!.push(doc.id);
+        }
+      });
+
+      // Update each subject with correct lectureIds
+      const batch = db.batch();
+      let batchCount = 0;
+
+      for (const doc of subjectsSnap.docs) {
+        const subjectData = doc.data();
+        const subjectId = doc.id;
+        const oldLectureIds = Array.isArray(subjectData.lectureIds)
+          ? subjectData.lectureIds.map(String)
+          : [];
+        const actualLectureIds = lecturesBySubject.get(subjectId) || [];
+
+        // Check if they're different
+        const oldSet = new Set(oldLectureIds);
+        const newSet = new Set(actualLectureIds);
+
+        let areDifferent = oldSet.size !== newSet.size;
+        if (!areDifferent) {
+          for (const id of oldLectureIds) {
+            if (!newSet.has(id)) {
+              areDifferent = true;
+              break;
+            }
+          }
+        }
+
+        if (areDifferent) {
+          // Update needed
+          const docRef = db.collection(SUBJECTS_COLLECTION).doc(subjectId);
+          batch.update(docRef, {
+            lectureIds: actualLectureIds,
+            updatedAt: admin.firestore.Timestamp.now(),
+          });
+
+          details.push({
+            subjectId,
+            name: subjectData.name || "Unknown",
+            oldCount: oldLectureIds.length,
+            newCount: actualLectureIds.length,
+          });
+
+          fixed++;
+          batchCount++;
+
+          // Commit batch every 500 operations (Firestore limit)
+          if (batchCount >= 500) {
+            await batch.commit();
+            batchCount = 0;
+          }
+        }
+      }
+
+      // Commit remaining operations
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+
+      return { fixed, details };
+    } catch (err) {
+      console.error("Error syncing subject lecture counts:", err);
+      throw err;
+    }
+  }
 }
