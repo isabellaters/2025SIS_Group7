@@ -84,6 +84,25 @@ app.delete("/subjects/:id", async (req, res) => {
   }
 });
 
+// Sync all subject lecture counts (fix data inconsistencies)
+app.post("/subjects/sync-lecture-counts", async (req, res) => {
+  try {
+    console.log("🔄 Starting subject lecture count sync...");
+    const result = await SubjectService.syncAllSubjectLectureCounts();
+    console.log(`✅ Sync complete! Fixed ${result.fixed} subjects`);
+    if (result.details.length > 0) {
+      console.log("Details:", result.details);
+    }
+    res.status(200).json({
+      message: "Subject lecture counts synced successfully",
+      ...result
+    });
+  } catch (err: any) {
+    console.error("Error syncing subject lecture counts:", err);
+    res.status(500).json({ error: err.message || "Failed to sync lecture counts" });
+  }
+});
+
 // Move lecture to different subject
 app.patch("/lectures/:lectureId/move", async (req, res) => {
   try {

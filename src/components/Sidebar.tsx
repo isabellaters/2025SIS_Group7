@@ -1,15 +1,13 @@
-import React, { useRef } from 'react';
+import React from 'react';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onNewRecording?: () => void;
-  onImportFile?: (file: File) => void;
   onDashboardClick?: () => void;
 }
 
-export default function Sidebar({ collapsed, onToggle, onNewRecording, onImportFile, onDashboardClick }: SidebarProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function Sidebar({ collapsed, onToggle, onNewRecording, onDashboardClick }: SidebarProps) {
   const collapsedWidth = 60;
   const expandedWidth = 260;
   const transition = '250ms cubic-bezier(0.4, 0, 0.2, 1)';
@@ -132,47 +130,13 @@ export default function Sidebar({ collapsed, onToggle, onNewRecording, onImportF
             fontWeight: 500,
             padding: '16px',
             fontSize: '1.05rem',
-            marginBottom: 12,
+            marginBottom: 32,
             cursor: 'pointer',
             boxShadow: '0 1px 4px rgba(37,99,235,0.08)',
             transition: 'background 0.2s',
           }}
         >
           New Recording
-        </button>
-
-        {/* Import File Button */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            accept="audio/*,video/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file && onImportFile) {
-                onImportFile(file);
-                // Reset the input so the same file can be selected again
-                e.target.value = '';
-              }
-            }}
-          />
-        <button
-            onClick={() => fileInputRef.current?.click()}
-          style={{
-            width: '88%',
-            background: '#f7f7f7',
-            color: '#222',
-            border: 'none',
-            borderRadius: 12,
-            fontWeight: 500,
-            padding: '14px',
-            fontSize: '1rem',
-            marginBottom: 32,
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-          }}
-        >
-          Import File
         </button>
 
         {/* Dashboard */}

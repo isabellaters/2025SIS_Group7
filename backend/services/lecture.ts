@@ -120,6 +120,22 @@ export class LectureService {
   static async deleteLecture(id: string): Promise<void> {
     try {
       const docRef = db.collection(LECTURES_COLLECTION).doc(id);
+      const docSnap = await docRef.get();
+
+      if (!docSnap.exists) {
+        throw new Error("Lecture not found");
+      }
+
+      const lectureData = docSnap.data();
+      const subjectId = lectureData?.subjectId;
+
+      // Remove lecture from subject's lectureIds array if it belongs to a subject
+      if (subjectId) {
+        const { SubjectService } = await import('./subject');
+        await SubjectService.removeLectureFromSubject(subjectId, id);
+      }
+
+      // Delete the lecture
       await docRef.delete();
     } catch (err) {
       console.error("Error deleting lecture:", err);
